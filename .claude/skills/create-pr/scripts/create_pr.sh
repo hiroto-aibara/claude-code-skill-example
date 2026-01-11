@@ -26,8 +26,6 @@ log_step() {
 }
 
 # Default values
-PR_ONLY=false
-CLEANUP_ONLY=false
 FORCE=false
 TITLE=""
 BODY=""
@@ -39,11 +37,9 @@ PR_URL=""
 usage() {
     echo "Usage: $0 [OPTIONS]"
     echo ""
-    echo "Creates a PR and automatically cleans up the worktree."
+    echo "Creates a PR from the current branch (worktree is NOT deleted)."
     echo ""
     echo "Options:"
-    echo "  --pr-only              Create PR only (don't remove worktree)"
-    echo "  --cleanup-only         Remove worktree only (PR already created)"
     echo "  --title <title>        PR title (interactive if not specified)"
     echo "  --body <body>          PR body (interactive if not specified)"
     echo "  --base <branch>        Base branch (default: main)"
@@ -54,8 +50,7 @@ usage() {
     echo "Example:"
     echo "  $0"
     echo "  $0 --title \"feat: Add new feature\" --body \"Description\""
-    echo "  $0 --pr-only"
-    echo "  $0 --cleanup-only"
+    echo "  $0 --draft"
     exit 1
 }
 
@@ -63,14 +58,6 @@ usage() {
 parse_arguments() {
     while [[ $# -gt 0 ]]; do
         case $1 in
-            --pr-only)
-                PR_ONLY=true
-                shift
-                ;;
-            --cleanup-only)
-                CLEANUP_ONLY=true
-                shift
-                ;;
             --title)
                 TITLE="$2"
                 shift 2
@@ -100,12 +87,6 @@ parse_arguments() {
                 ;;
         esac
     done
-
-    # Validate conflicting options
-    if [ "$PR_ONLY" = true ] && [ "$CLEANUP_ONLY" = true ]; then
-        log_error "Cannot specify both --pr-only and --cleanup-only"
-        exit 1
-    fi
 }
 
 # Validate environment
@@ -125,12 +106,10 @@ validate_environment() {
         exit 1
     fi
 
-    # Check if we're in a worktree directory
+    # Check if we're in a worktree directory (optional warning)
     GIT_DIR=$(git rev-parse --git-dir)
     if [[ ! "$GIT_DIR" =~ \.git/worktrees/ ]]; then
-        log_error "Not in a worktree directory"
-        log_info "This script must be run from within .worktrees/<feature-name>/"
-        exit 1
+        log_warn "Not in a worktree directory (running from main repository)"
     fi
 
     # Get current branch
@@ -143,13 +122,8 @@ validate_environment() {
     # Get repository root
     REPO_ROOT=$(git rev-parse --show-toplevel)
 
-    # Get worktree path
-    WORKTREE_PATH=$(pwd)
-    WORKTREE_NAME=$(basename "$WORKTREE_PATH")
-
     log_info "Current branch: $CURRENT_BRANCH"
-    log_info "Worktree path: $WORKTREE_PATH"
-    log_info "Repository root: $REPO_ROOT"
+    log_info "Base branch: $BASE_BRANCH"
 }
 
 # Check for uncommitted changes
@@ -194,11 +168,6 @@ check_unpushed_commits() {
 
 # Create pull request
 create_pull_request() {
-    if [ "$CLEANUP_ONLY" = true ]; then
-        log_info "Skipping PR creation (--cleanup-only specified)"
-        return 0
-    fi
-
     log_step "Creating pull request..."
 
     # Build gh pr create command
@@ -228,54 +197,7 @@ create_pull_request() {
         return 0
     else
         log_error "Failed to create pull request"
-        log_info "Worktree will not be removed"
         exit 1
-    fi
-}
-
-# Cleanup worktree
-cleanup_worktree() {
-    if [ "$PR_ONLY" = true ]; then
-        log_info "Skipping worktree cleanup (--pr-only specified)"
-        return 0
-    fi
-
-    log_step "Removing worktree..."
-
-    # Move to repository root
-    cd "$REPO_ROOT"
-
-    # Remove worktree
-    if git worktree remove "$WORKTREE_PATH"; then
-        log_info "Worktree removed successfully: $WORKTREE_PATH"
-    else
-        log_error "Failed to remove worktree"
-        log_info ""
-        log_info "You can manually remove it with:"
-        log_info "  git worktree remove $WORKTREE_PATH"
-        log_info ""
-        log_info "Or force remove:"
-        log_info "  git worktree remove --force $WORKTREE_PATH"
-        exit 1
-    fi
-}
-
-# Return to main branch
-return_to_main() {
-    if [ "$PR_ONLY" = true ]; then
-        log_info "Staying in worktree (--pr-only specified)"
-        return 0
-    fi
-
-    log_step "Returning to main branch..."
-
-    cd "$REPO_ROOT"
-
-    if git checkout "$BASE_BRANCH"; then
-        log_info "Now on branch: $BASE_BRANCH"
-    else
-        log_warn "Failed to checkout $BASE_BRANCH"
-        log_info "Current directory: $(pwd)"
     fi
 }
 
@@ -283,27 +205,20 @@ return_to_main() {
 print_summary() {
     echo ""
     echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN} PR And Cleanup Completed!${NC}"
+    echo -e "${GREEN} PR Created!${NC}"
     echo -e "${GREEN}========================================${NC}"
     echo ""
 
-    if [ "$CLEANUP_ONLY" = false ]; then
-        if [ -n "$PR_URL" ]; then
-            echo "PR URL: $PR_URL"
-        fi
+    if [ -n "$PR_URL" ]; then
+        echo "PR URL: $PR_URL"
     fi
-
-    if [ "$PR_ONLY" = false ]; then
-        echo "Removed worktree: $WORKTREE_NAME"
-        echo "Current branch: $BASE_BRANCH"
-        echo ""
-        echo "Note:"
-        echo "  - Local branch ($CURRENT_BRANCH) is preserved"
-        echo "  - Remote branch is preserved"
-        echo ""
-        echo "To delete local branch after PR merge:"
-        echo "  git branch -d $CURRENT_BRANCH"
-    fi
+    echo ""
+    echo "Note:"
+    echo "  - Worktree is NOT deleted"
+    echo "  - You can continue making changes locally"
+    echo ""
+    echo "After PR is merged, run:"
+    echo "  /cleanup-worktree"
     echo ""
 }
 
@@ -314,8 +229,6 @@ main() {
     check_uncommitted_changes
     check_unpushed_commits
     create_pull_request
-    cleanup_worktree
-    return_to_main
     print_summary
 }
 

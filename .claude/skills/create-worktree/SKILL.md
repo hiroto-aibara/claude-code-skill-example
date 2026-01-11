@@ -51,16 +51,21 @@ bash .claude/skills/create-worktree/scripts/create_worktree.sh user-auth
 
 ## 作業完了後
 
-### PR作成とworktree削除を同時に行う（推奨）
-
-**pr-and-cleanup** スキルを使用すると、PR作成とworktree削除を自動で行えます：
+### 1. PR作成
 
 ```bash
-cd .worktrees/<feature-name>
-bash ../../.claude/skills/pr-and-cleanup/scripts/pr_and_cleanup.sh
+/create-pr
 ```
 
-詳細は [pr-and-cleanup スキル](../pr-and-cleanup/SKILL.md) を参照してください。
+詳細は [create-pr スキル](../create-pr/SKILL.md) を参照してください。
+
+### 2. worktree削除（PRマージ後）
+
+```bash
+/cleanup-worktree
+```
+
+詳細は [cleanup-worktree スキル](../cleanup-worktree/SKILL.md) を参照してください。
 
 ### 手動でworktreeを削除する場合
 
