@@ -118,6 +118,87 @@ cd .worktrees/user-auth && claude
 /create-pr
 ```
 
+## 他プロジェクトへの導入
+
+### ディレクトリ構成
+
+```
+.claude/
+├── skill-source/          ← submodule（このリポジトリ）
+│   └── .claude/skills/
+│       ├── create-pr/
+│       ├── review-pr/
+│       └── ...
+└── skills/                ← 実際に使用するスキル（コミット対象）
+    ├── create-pr/         ← skill-sourceからコピー
+    ├── review-pr/         ← skill-sourceからコピー
+    └── my-custom-skill/   ← プロジェクト固有のスキル
+```
+
+### 1. Submoduleとして追加
+
+```bash
+# skillsとして認識されない場所に配置
+git submodule add https://github.com/boost-consulting/claude-code-skill-example-aibara .claude/skill-source
+```
+
+### 2. 必要なスキルをコピー
+
+```bash
+# 使いたいスキルを .claude/skills/ にコピー
+cp -r .claude/skill-source/.claude/skills/create-pr .claude/skills/
+
+# コミット
+git add .claude/skills/
+git commit -m "add create-pr skill"
+```
+
+**ポイント:**
+- `.claude/skill-source/` はスキルとして認識されない
+- 使いたいスキルだけを `.claude/skills/` にコピー
+- プロジェクト固有のスキルは `.claude/skills/` に直接配置可能
+
+---
+
+## スキル改善のフィードバック（PR手順）
+
+他プロジェクトでスキルを改善した場合のPR手順。
+
+### 1. skill-source内で編集・コミット
+
+```bash
+cd .claude/skill-source
+git checkout -b improve/create-pr-enhancement
+
+# ファイルを編集...
+
+git add .
+git commit -m "feat(create-pr): add support for draft PR"
+```
+
+### 2. PRを作成
+
+```bash
+git push origin improve/create-pr-enhancement
+# GitHub上でPRを作成
+```
+
+### 3. マージ後、プロジェクトに同期
+
+```bash
+cd .claude/skill-source
+git checkout main && git pull
+cd ../..
+
+# 更新されたスキルをコピー
+cp -r .claude/skill-source/.claude/skills/create-pr .claude/skills/
+
+git add .claude/skills/ .claude/skill-source
+git commit -m "sync: update create-pr skill"
+```
+
+---
+
 ## リファレンス
 
 このリポジトリは以下を元に作成されています：
