@@ -1,27 +1,37 @@
 ---
 name: review-pr
 description: Review a GitHub PR and post comments. Analyzes code quality, bugs, security, and performance. User chooses final action (Approve/Request Changes/Comment).
-allowed-tools: Bash(gh:*), Bash(git:*), Read, Grep, Glob
+allowed-tools: Bash(gh:*), Bash(git:*), Bash(jq:*), Read, Grep, Glob, mcp__github__get_pull_request, mcp__github__get_pull_request_files, mcp__github__get_pull_request_diff, mcp__github__create_and_submit_pull_request_review
 ---
 
 # PR Reviewer
 
-GitHub PRをレビューし、コメントを投稿します。
+GitHub PRを段階的にレビューし、コメントを投稿します。
 
 ## 概要
 
-このスキルは以下を実行します：
+このスキルは**段階的アプローチ**でPRをレビューします：
 
-1. PR番号またはURLからPR情報を取得
-2. 変更内容を分析（diff、変更ファイル、PR説明）
-3. 以下の観点でレビュー：
-   - コード品質（可読性、保守性、設計パターン）
-   - バグ/ロジックエラー
-   - セキュリティ（脆弱性、機密情報の漏洩）
-   - パフォーマンス（N+1問題、不要なループなど）
-4. レビュー結果をユーザーに提示
-5. ユーザーがアクション選択（Approve / Request Changes / Comment）
-6. GitHub PRにレビューを投稿
+```
+Phase 1: 全体像把握（低Token消費）
+   - PR基本情報（タイトル、説明、統計）
+   - 変更ファイル一覧（パスと行数のみ）
+   - レイヤー別分類・優先度判定
+        ↓
+Phase 2: 優先度判定
+   - セキュリティ関連ファイルを特定
+   - 重要度でソート
+   - レビュー順序を決定
+        ↓
+Phase 3: 詳細レビュー（ファイル単位で段階的）
+   - 優先度高のファイルから個別にdiff取得
+   - 必要に応じて関連コードを読み込み
+   - 問題点を特定
+        ↓
+Phase 4: レビュー結果整理・提示
+        ↓
+Phase 5: ユーザー確認・投稿
+```
 
 ## 使用方法
 
@@ -42,123 +52,195 @@ GitHub PRをレビューし、コメントを投稿します。
 /review-pr owner/repo#123
 ```
 
-## レビュー観点
+---
 
-### 1. コード品質
-- 可読性（命名、コメント、構造）
-- 保守性（関心の分離、DRY原則）
-- 設計パターンの適切な使用
-- テストの有無と品質
+## Phase 1: 全体像把握
 
-### 2. バグ/ロジックエラー
-- 境界値処理
-- null/undefined チェック
-- 非同期処理のエラーハンドリング
-- 型の不整合
+### 取得する情報
 
-### 3. セキュリティ
-- インジェクション脆弱性（SQL, XSS, Command）
-- 認証・認可の問題
-- 機密情報のハードコード
-- 安全でない依存関係
+1. **PR基本情報**: `mcp__github__get_pull_request`
+   - タイトル、説明、作成者
+   - ベースブランチ、ヘッドブランチ
+   - マージ可能状態
 
-### 4. パフォーマンス
-- N+1クエリ問題
-- 不要なループ・再計算
-- メモリリーク
-- 非効率なアルゴリズム
+2. **変更ファイル一覧**: `mcp__github__get_pull_request_files`
+   - 結果が大きい場合は `jq` でファイル名・統計のみ抽出:
+   ```bash
+   jq -r '.[0].text | fromjson | .[] | "\(.filename) (+\(.additions), -\(.deletions))"' <result_file>
+   ```
 
-## レビュー結果の構造
+### 出力フォーマット
+
+```markdown
+### PR概要
+| 項目 | 内容 |
+|------|------|
+| タイトル | feat: Add authentication |
+| 作成者 | username |
+| ベース | main ← feature/auth |
+| 状態 | mergeable: clean |
+| ファイル数 | 15 |
+| 変更 | +500 / -100 |
+
+### 変更ファイル一覧
+- app/api/auth.py (+120, -10)
+- app/domain/user.py (+30, -5)
+- tests/test_auth.py (+80, -0)
+...
+```
+
+---
+
+## Phase 2: 優先度判定
+
+### 優先度ルール
+
+| 優先度 | 条件 | パターン例 |
+|--------|------|------------|
+| 🔴 最高 | セキュリティ関連 | auth, jwt, password, secret, credential, token |
+| 🟠 高 | API/エンドポイント | api/, routes/, handlers/, endpoints/ |
+| 🟡 中 | ドメイン/ビジネスロジック | domain/, use_cases/, services/, application/ |
+| 🟢 低 | インフラ/リポジトリ | infrastructure/, repositories/ |
+| 🔵 通常 | フロントエンド | components/, views/, pages/ |
+| ⚪ 最低 | テスト/設定 | tests/, *.test.*, *.md, *.json, *.yaml |
+
+### 分類出力例
+
+```markdown
+### レビュー優先順位
+
+**🔴 セキュリティ関連（最優先）**
+1. app/infrastructure/jwt_service.py (+50, -0)
+2. app/api/auth.py (+120, -10)
+
+**🟠 API層**
+3. app/api/onboardings.py (+80, -20)
+
+**🟡 Application/Domain層**
+4. app/use_cases/login.py (+60, -0)
+5. app/domain/user.py (+30, -5)
+
+**⚪ テスト/その他**
+6. tests/test_auth.py (+80, -0)
+7. README.md (+10, -2)
+```
+
+---
+
+## Phase 3: 詳細レビュー
+
+### 進め方
+
+優先度順にファイルを確認：
+
+```
+for each file in priority_order:
+    1. gh pr diff <PR> -- <file> で個別diff取得
+    2. 4つの観点でチェック
+    3. 必要なら関連ファイルを Read で確認
+    4. 問題点をリストに追加
+
+    # 早期終了条件
+    if Critical問題が3つ以上:
+        → これ以上の詳細確認は不要
+        → Request Changes確定として Phase 4 へ
+```
+
+### 個別diff取得コマンド
+
+```bash
+# 特定ファイルのdiffのみ取得
+gh pr diff <PR_NUMBER> -- path/to/file.py
+```
+
+### レビュー観点（4つ）
+
+1. **コード品質**: 可読性、保守性、設計パターン
+2. **バグ/ロジックエラー**: 境界値、null処理、非同期エラー
+3. **セキュリティ**: インジェクション、認証認可、機密情報
+4. **パフォーマンス**: N+1、不要ループ、メモリリーク
+
+---
+
+## Phase 4: レビュー結果整理
+
+### 結果フォーマット
 
 ```markdown
 ## PR Review: #123 - PRタイトル
 
-### 概要
-変更の全体的な評価と概要
+### 📋 概要
+| 項目 | 内容 |
+|------|------|
+| 変更ファイル数 | 15 files |
+| 追加/削除 | +500 / -100 |
+| レビュー対象 | 8 files（優先度高のみ詳細確認） |
 
-### 問題点
+**変更の概要**: [1-2文で変更内容を要約]
+
+---
+
+### 🔍 レビュー結果
 
 #### 🔴 Critical（修正必須）
-- セキュリティ問題
-- 重大なバグ
+なし / または問題リスト
 
 #### 🟡 Warning（要検討）
-- 潜在的な問題
-- パフォーマンス懸念
+なし / または問題リスト
 
 #### 🔵 Suggestion（提案）
-- コード品質の改善
-- ベストプラクティス
+なし / または提案リスト
 
-### 良い点
-- 評価できる実装
+---
 
-### 推奨アクション
-- [ ] Approve（承認）
-- [ ] Request Changes（変更要求）
-- [ ] Comment（コメントのみ）
+### ✅ 良い点
+- [評価点]
+
+---
+
+### 📊 総合評価
+**推奨アクション**: Approve / Request Changes / Comment
+**理由**: [1-2文]
 ```
 
-## 実行フロー
+---
 
-```
-1. PR情報取得
-   $ gh pr view <number> --json title,body,files,additions,deletions
-   $ gh pr diff <number>
+## Phase 5: ユーザー確認・投稿
 
-2. コード分析
-   - diff を読み込み
-   - 変更ファイルを確認
-   - 関連コードを必要に応じて読み込み
+### アクション選択基準
 
-3. レビュー実施
-   - 4つの観点で分析
-   - 問題点・良い点をリストアップ
+| アクション | 条件 |
+|------------|------|
+| **Approve** | Critical なし、Warning 軽微 |
+| **Request Changes** | Critical 1つ以上、またはセキュリティ懸念 |
+| **Comment** | 判断に迷う、追加議論が必要 |
 
-4. ユーザー確認
-   - レビュー結果を表示
-   - アクションを選択してもらう
+### Request Changes 時のオプション
 
-5. レビュー投稿
-   $ gh pr review <number> --body <review> [--approve|--request-changes|--comment]
-```
+1. **通常のRequest Changes**: レビューコメントのみ投稿
+2. **@claude 付き**: GitHub Actionで自動修正させる場合
 
-## Request Changes 時の投稿オプション
+---
 
-Request Changesを選択した場合、以下の投稿方法を選択できます：
+## Token消費の目安
 
-### 1. 通常のRequest Changes
+| PR規模 | 従来 | 改善後 |
+|--------|------|--------|
+| 小（〜10ファイル） | 5,000 | 1,500 |
+| 中（〜30ファイル） | 15,000 | 3,000 |
+| 大（50ファイル超） | 30,000+ | 5,000 |
 
-レビューコメントのみを投稿します。修正作業は別途行います。
-
-### 2. @claude 付きRequest Changes
-
-GitHub Actionで自動修正させる場合、レビューコメントに `@claude` メンションを含めて投稿します。
-
-```markdown
-@claude 以下の修正をお願いします:
-- XXXのバリデーションを追加
-- エラーハンドリングを改善
-```
-
-**前提条件**: Claude Code GitHub Actionがリポジトリに設定済みであること
+---
 
 ## 前提条件
 
-- `gh` CLI がインストール・認証済みであること
+- `gh` CLI がインストール・認証済み
 - PRの読み取り権限があること
-
-## 注意事項
-
-- 最終的なApprove/Request Changesの判断はユーザーが行います
-- 機密情報を含むPRは慎重に扱ってください
-- 大規模な変更（100ファイル超）は分割レビューを検討してください
 
 ## 関連スキル
 
 - `create-pr`: PR作成
 - `cleanup-worktree`: worktree削除
-- `create-worktree`: worktree作成
 
 ## 詳細
 
