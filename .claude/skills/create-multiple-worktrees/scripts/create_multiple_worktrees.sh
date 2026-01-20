@@ -36,26 +36,33 @@ log_dry() {
 
 # Default options
 DRY_RUN=false
+NO_SETUP=false
+BASE_BRANCH=""
 TASK_FILES=()
 
 # Usage
 usage() {
     cat << EOF
-Usage: $0 [OPTIONS] <task-file.md> [task-file.md...]
+Usage: $0 --base <branch> [OPTIONS] <task-file.md> [task-file.md...]
 
 Creates git worktrees from TASK.md files for parallel feature development.
 
+Required:
+  --base <branch>   Base branch to create worktrees from (e.g., main, develop)
+
 Arguments:
-  task-file.md    Path to TASK.md files (feature name is extracted from filename)
+  task-file.md      Path to TASK.md files (feature name is extracted from filename)
 
 Options:
-  --dry-run       Show what would be created without actually creating
-  -h, --help      Show this help message
+  --no-setup        Skip environment setup (mise install, make setup)
+  --dry-run         Show what would be created without actually creating
+  -h, --help        Show this help message
 
 Examples:
-  $0 tasks/user-auth.md tasks/dashboard.md tasks/api-v2.md
-  $0 tasks/*.md
-  $0 --dry-run tasks/user-auth.md
+  $0 --base main tasks/user-auth.md tasks/dashboard.md
+  $0 --base develop tasks/*.md
+  $0 --base main --dry-run tasks/user-auth.md
+  $0 --base main --no-setup tasks/api-v2.md
 
 EOF
     exit 1
@@ -64,8 +71,20 @@ EOF
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --base)
+            if [[ -z "${2:-}" ]]; then
+                log_error "--base requires a branch name"
+                exit 1
+            fi
+            BASE_BRANCH="$2"
+            shift 2
+            ;;
         --dry-run)
             DRY_RUN=true
+            shift
+            ;;
+        --no-setup)
+            NO_SETUP=true
             shift
             ;;
         -h|--help)
@@ -88,6 +107,13 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Check if --base is provided (required)
+if [[ -z "$BASE_BRANCH" ]]; then
+    log_error "--base option is required. Specify the base branch (e.g., --base main)"
+    echo ""
+    usage
+fi
+
 # Check if we have any task files
 if [[ ${#TASK_FILES[@]} -eq 0 ]]; then
     log_error "No TASK.md files provided"
@@ -105,6 +131,13 @@ cd "$REPO_ROOT"
 # Check if we're in a git repository
 if [[ ! -d ".git" ]]; then
     log_error "Not a git repository"
+    exit 1
+fi
+
+# Verify base branch exists
+if ! git show-ref --verify --quiet "refs/heads/${BASE_BRANCH}" && \
+   ! git show-ref --verify --quiet "refs/remotes/origin/${BASE_BRANCH}"; then
+    log_error "Base branch '${BASE_BRANCH}' does not exist"
     exit 1
 fi
 
@@ -133,6 +166,90 @@ copy_if_exists() {
     return 1
 }
 
+# Function to copy environment files using glob pattern
+copy_env_files() {
+    local worktree_dir="$1"
+    local copied_count=0
+
+    log_info "Detecting environment files..."
+
+    # Find all .env* files up to 3 levels deep, excluding node_modules and .venv
+    while IFS= read -r -d '' env_file; do
+        # Skip if file is in excluded directories
+        if [[ "$env_file" == *"node_modules"* ]] || \
+           [[ "$env_file" == *".venv"* ]] || \
+           [[ "$env_file" == *".worktrees"* ]] || \
+           [[ "$env_file" == *".git"* ]]; then
+            continue
+        fi
+
+        # Get relative path
+        local rel_path="${env_file#./}"
+        local dest_path="${worktree_dir}/${rel_path}"
+
+        # Create directory and copy file
+        mkdir -p "$(dirname "$dest_path")"
+
+        # For root .env file, randomize ports
+        if [[ "$rel_path" == ".env" ]]; then
+            local random_frontend_port=$(generate_random_port)
+            local random_backend_port=$(generate_random_port)
+            local random_agent_port=$(generate_random_port)
+
+            sed -e "s/^FRONTEND_PORT=.*/FRONTEND_PORT=${random_frontend_port}/" \
+                -e "s/^BACKEND_PORT=.*/BACKEND_PORT=${random_backend_port}/" \
+                -e "s/^AGENT_PORT=.*/AGENT_PORT=${random_agent_port}/" \
+                -e "s/^PORT=.*/PORT=${random_frontend_port}/" \
+                "$env_file" > "$dest_path"
+        else
+            cp "$env_file" "$dest_path"
+        fi
+
+        ((copied_count++))
+        log_info "  Copied: ${rel_path}"
+    done < <(find . -maxdepth 3 -name ".env*" -type f -print0 2>/dev/null)
+
+    # Also copy .envrc if exists
+    if [[ -f ".envrc" ]]; then
+        cp ".envrc" "${worktree_dir}/.envrc"
+        ((copied_count++))
+        log_info "  Copied: .envrc"
+    fi
+
+    if [[ $copied_count -eq 0 ]]; then
+        log_warn "No environment files found"
+    else
+        log_info "Copied ${copied_count} environment file(s)"
+    fi
+}
+
+# Function to run environment setup
+run_setup() {
+    local worktree_dir="$1"
+    local feature_name="$2"
+
+    if [[ "$NO_SETUP" == true ]]; then
+        log_info "Skipping setup (--no-setup specified)"
+        return 0
+    fi
+
+    log_info "Running environment setup..."
+
+    # Check for mise.toml or .mise.toml
+    if [[ -f "${worktree_dir}/mise.toml" ]] || [[ -f "${worktree_dir}/.mise.toml" ]]; then
+        log_info "  Running mise install..."
+        (cd "${worktree_dir}" && mise install 2>&1) || log_warn "mise install completed with warnings for ${feature_name}"
+    fi
+
+    # Run make setup if Makefile with setup target exists
+    if [[ -f "${worktree_dir}/Makefile" ]]; then
+        if grep -q "^setup:" "${worktree_dir}/Makefile" 2>/dev/null; then
+            log_info "  Running make setup..."
+            (cd "${worktree_dir}" && make setup 2>&1) || log_warn "make setup completed with warnings for ${feature_name}"
+        fi
+    fi
+}
+
 # Function to create a single worktree
 create_single_worktree() {
     local task_file="$1"
@@ -154,7 +271,7 @@ create_single_worktree() {
             return 1
         }
     else
-        git worktree add -b "${branch_name}" "${worktree_dir}" main 2>/dev/null || {
+        git worktree add -b "${branch_name}" "${worktree_dir}" "${BASE_BRANCH}" 2>/dev/null || {
             log_error "Failed to create worktree for ${feature_name}"
             return 1
         }
@@ -164,32 +281,11 @@ create_single_worktree() {
     cp "$task_file" "${worktree_dir}/TASK.md"
     log_info "TASK.md copied to ${worktree_dir}"
 
-    # Copy environment files with randomized ports
-    if [[ -f ".env" ]]; then
-        local random_frontend_port=$(generate_random_port)
-        local random_backend_port=$(generate_random_port)
-        local random_agent_port=$(generate_random_port)
+    # Copy environment files using glob detection
+    copy_env_files "${worktree_dir}"
 
-        sed -e "s/^FRONTEND_PORT=.*/FRONTEND_PORT=${random_frontend_port}/" \
-            -e "s/^BACKEND_PORT=.*/BACKEND_PORT=${random_backend_port}/" \
-            -e "s/^AGENT_PORT=.*/AGENT_PORT=${random_agent_port}/" \
-            ".env" > "${worktree_dir}/.env"
-    fi
-    copy_if_exists ".envrc" "${worktree_dir}/.envrc" || true
-
-    # Frontend environment files
-    for file in .env .env.local .env.dev .env.prd .env.test; do
-        copy_if_exists "modules/frontend/${file}" "${worktree_dir}/modules/frontend/${file}" || true
-    done
-
-    # Backend and agent environment files
-    copy_if_exists "modules/backend/.env" "${worktree_dir}/modules/backend/.env" || true
-    copy_if_exists "modules/agent/.env" "${worktree_dir}/modules/agent/.env" || true
-
-    # Run make setup if Makefile exists
-    if [[ -f "${worktree_dir}/Makefile" ]]; then
-        (cd "${worktree_dir}" && make setup 2>/dev/null) || log_warn "make setup completed with warnings for ${feature_name}"
-    fi
+    # Run environment setup
+    run_setup "${worktree_dir}" "${feature_name}"
 
     log_success "${feature_name} created (${worktree_dir})"
     return 0
@@ -199,13 +295,27 @@ create_single_worktree() {
 if [[ "$DRY_RUN" == true ]]; then
     echo ""
     log_dry "Would create the following worktrees:"
+    log_dry "Base branch: ${BASE_BRANCH}"
     echo ""
+
+    # Show detected env files
+    log_dry "Detected environment files:"
+    while IFS= read -r -d '' env_file; do
+        if [[ "$env_file" != *"node_modules"* ]] && \
+           [[ "$env_file" != *".venv"* ]] && \
+           [[ "$env_file" != *".worktrees"* ]] && \
+           [[ "$env_file" != *".git"* ]]; then
+            echo "    ${env_file#./}"
+        fi
+    done < <(find . -maxdepth 3 -name ".env*" -type f -print0 2>/dev/null)
+    echo ""
+
     for task_file in "${TASK_FILES[@]}"; do
         feature_name=$(extract_feature_name "$task_file")
         echo "  - .worktrees/${feature_name}/"
         echo "    ├── TASK.md (from ${task_file})"
-        echo "    ├── .env"
-        echo "    └── (branch: feature/${feature_name})"
+        echo "    ├── .env* (auto-detected)"
+        echo "    └── (branch: feature/${feature_name} from ${BASE_BRANCH})"
     done
     echo ""
     log_dry "Total: ${#TASK_FILES[@]} worktrees"
@@ -216,6 +326,7 @@ fi
 # Main execution
 echo ""
 log_info "Creating ${#TASK_FILES[@]} worktrees from TASK.md files..."
+log_info "Base branch: ${BASE_BRANCH}"
 echo ""
 
 SUCCESS_COUNT=0
@@ -231,6 +342,7 @@ for task_file in "${TASK_FILES[@]}"; do
     else
         ((FAILED_COUNT++))
     fi
+    echo ""
 done
 
 # Print summary
@@ -246,8 +358,8 @@ echo ""
 for feature in "${CREATED_WORKTREES[@]}"; do
     echo ".worktrees/${feature}/"
     echo "  ├── TASK.md"
-    echo "  ├── .env"
-    echo "  └── feature/${feature}"
+    echo "  ├── .env* (auto-detected)"
+    echo "  └── feature/${feature} (from ${BASE_BRANCH})"
 done
 
 echo ""
