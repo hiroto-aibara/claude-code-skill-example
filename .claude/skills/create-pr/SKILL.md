@@ -28,11 +28,7 @@ allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(pwd:*), Read
    - 構造化情報のみを入力として受け取る
    - テンプレートに沿って本文生成
         ↓
-4. ユーザー確認
-   - タイトル・本文を提示
-   - 修正要望があれば対応
-        ↓
-5. PR作成（bash）
+4. PR作成（bash）
    - gh pr create 実行
    - PR URL返却
 ```
