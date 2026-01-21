@@ -150,7 +150,7 @@ Claude Codeが生成するPR本文のテンプレート：
 ```bash
 cd .worktrees/feature-x
 /create-pr
-# → 情報収集 → PR本文生成 → ユーザー確認 → PR作成
+# → 情報収集 → PR本文生成 → PR作成
 ```
 
 ### ケース2: タイトル・本文を事前指定
