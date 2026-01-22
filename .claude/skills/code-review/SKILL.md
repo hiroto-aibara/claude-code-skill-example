@@ -212,9 +212,9 @@ git diff --cached
 レビュー時の判断基準として、以下のドキュメントを参照してください：
 
 - [REVIEW_CHECKLIST.md](REVIEW_CHECKLIST.md) - OnboardAI 固有のレビュー観点（**最優先**）
-- [product.md](../../.kiro/steering/product.md) - 開発規約全般
-- [structure.md](../../.kiro/steering/structure.md) - システム設計
-- [tech.md](../../.kiro/steering/tech.md) - エラーハンドリング規約
+- [dev-rules.md](../../../docs/dev-rules.md) - 開発規約全般
+- [error-handling-guide.md](../../../docs/error-handling-guide.md) - エラーハンドリング規約
+- [testing-guide.md](../../../docs/testing-guide.md) - テスト規約
 
 ## 使用方法
 
