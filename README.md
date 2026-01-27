@@ -13,6 +13,7 @@ Claude Codeでプロジェクト立ち上げから設計・タスク管理・並
 | [init-project](./.claude/skills/init-project/SKILL.md) | プロジェクト基盤（git, GitHub, mise, husky, dependabot, docs テンプレート） |
 | [init-go-backend](./.claude/skills/init-go-backend/SKILL.md) | Go バックエンド（Clean Architecture, golangci-lint, depguard） |
 | [init-react-frontend](./.claude/skills/init-react-frontend/SKILL.md) | React フロントエンド（Vite, TypeScript, ESLint, Prettier, dev proxy） |
+| [init-serena](./.claude/skills/init-serena/SKILL.md) | Serena MCP（セマンティックコード操作） |
 
 ### 開発中
 
@@ -62,6 +63,8 @@ Claude Codeでプロジェクト立ち上げから設計・タスク管理・並
 /init-go-backend           ← Go バックエンド追加（任意）
       ↓
 /init-react-frontend       ← React フロントエンド追加（任意）
+      ↓
+/init-serena               ← Serena MCP追加（任意）
 ```
 
 ```mermaid
@@ -69,9 +72,11 @@ flowchart TD
     A["/init-project"]
     B["/init-go-backend"]
     C["/init-react-frontend"]
+    D["/init-serena"]
 
     A --> B
     A --> C
+    A --> D
 ```
 
 ### 開発フロー
@@ -215,6 +220,10 @@ flowchart TD
 # 3. React フロントエンド（必要な場合）
 /init-react-frontend
 # → Vite + React + TypeScript, ESLint, Prettier, dev proxy
+
+# 4. Serena MCP（必要な場合）
+/init-serena
+# → Serena MCP設定, .gitignore更新
 ```
 
 ### ドキュメント作成
