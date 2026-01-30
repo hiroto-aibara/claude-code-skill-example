@@ -1,6 +1,37 @@
 # PR Reviewer - Reference
 
+詳細なコマンド例、ルール、チェックリスト、テンプレートを記載。
+基本的な使い方は [SKILL.md](SKILL.md) を参照。
+
+---
+
 ## 段階的レビューの詳細手順
+
+### Phase 0: タスクファイル確認
+
+#### タスクファイルの確認フロー
+
+```
+引数でタスクファイルが指定されている？
+  ├─ Yes → Read でファイルを読み込む
+  │         └─ 「## 受け入れ基準」セクションを抽出・保持
+  │
+  └─ No → AskUserQuestion でユーザーに確認
+            ├─ 「あり」→ パスを入力してもらい Read で読み込む
+            └─ 「なし」→ Phase 1 へ（受け入れ基準チェックはスキップ）
+```
+
+#### AskUserQuestion の例
+
+```
+対応するタスクファイルはありますか？
+受け入れ基準との整合性をチェックできます。
+
+- あり（パスを入力）
+- なし（そのままレビュー）
+```
+
+---
 
 ### Phase 1: 全体像把握
 
@@ -76,6 +107,93 @@ jq -r '.[0].text | fromjson | .[].filename' <result_file>
 4. [40] apps/web/src/views/LoginPage.tsx ← views+変更量大
 5. [15] tests/api/test_auth.py ← tests+変更量
 6. [5] README.md ← md
+```
+
+---
+
+### Phase 2.5: 受け入れ基準チェック（タスクファイル指定時のみ）
+
+タスクファイルの「## 受け入れ基準」セクションを解析し、各基準をチェックします。
+
+#### 受け入れ基準の種類と判定方法
+
+| 基準の記述例 | 判定方法 | 実行コマンド |
+|-------------|---------|-------------|
+| `pytest tests/ がパス` | pytest 実行 | `cd apps/api && source .venv/bin/activate && pytest tests/ -v` |
+| `mypy 型チェックパス` | mypy 実行 | `cd apps/api && source .venv/bin/activate && mypy app/` |
+| `ruff/black 準拠` | lint 実行 | `ruff check app/ && black --check app/` |
+| `npm run lint 成功` | npm 実行 | `cd apps/web && npm run lint` |
+| `npm run build 成功` | npm 実行 | `cd apps/web && npm run build` |
+| `import-linter 通過` | lint-imports 実行 | `cd apps/api && lint-imports` |
+| `ドメイン層の独立性維持` | PR内容と照合 | 手動確認（Domain→Frameworkの依存がないか） |
+| `テストカバレッジ XX% 以上` | pytest-cov 実行 | `pytest --cov=app tests/` |
+
+#### コマンド実行例
+
+```bash
+# バックエンド（apps/api）
+cd apps/api
+source .venv/bin/activate
+
+# テスト
+pytest tests/ -v
+
+# 型チェック
+mypy app/ --strict
+
+# Lint
+ruff check app/
+black --check app/
+
+# Import Linter（レイヤー依存チェック）
+lint-imports
+
+# カバレッジ
+pytest --cov=app --cov-report=term-missing tests/
+```
+
+```bash
+# フロントエンド（apps/web）
+cd apps/web
+
+# Lint
+npm run lint
+
+# ビルド
+npm run build
+
+# テスト
+npm run test
+```
+
+#### 結果出力フォーマット
+
+```markdown
+### 📋 受け入れ基準チェック
+
+| 基準 | 結果 | 詳細 |
+|------|------|------|
+| pytest tests/ がパス | ✅ PASS | 全24テスト成功 |
+| mypy 型チェックパス | ✅ PASS | エラーなし |
+| ruff/black フォーマット準拠 | ❌ FAIL | 3ファイルでフォーマット違反 |
+| ドメイン層の独立性維持 | ✅ PASS | import-linter通過 |
+| npm run build 成功 | ✅ PASS | ビルド完了 |
+
+**未達項目がある場合**: Request Changes を推奨
+```
+
+#### 定性的基準の判定
+
+コマンドで自動判定できない基準は、PR内容と照合して手動で判定：
+
+```
+例: 「エラーハンドリングが適切」
+  → PR diff内のtry-except/catchブロックを確認
+  → エラーケースが網羅されているかチェック
+
+例: 「ログ出力が適切」
+  → logger呼び出しを確認
+  → 重要な操作にログがあるかチェック
 ```
 
 ---
@@ -321,3 +439,10 @@ git show pr-$PR_NUMBER:path/to/file.py
 - [SKILL.md](SKILL.md) - 基本的な使い方
 - [GitHub CLI Documentation](https://cli.github.com/manual/)
 - [GitHub Pull Request Reviews](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests)
+
+## 関連スキル
+
+- `/create-pr` - PR作成
+- `/cleanup-worktree` - worktree削除
+- `/start-pr-review-task` - PRレビュータスクの登録・開始（vibe-kanban連携）
+- `/create-task` - タスクファイル作成
