@@ -7,6 +7,7 @@
 | `--title <title>` | PRタイトル | インタラクティブ入力 |
 | `--body <body>` | PR本文 | インタラクティブ入力 |
 | `--base <branch>` | ベースブランチ | main |
+| `--issue <number>` | 関連Issue番号 | 自動取得 |
 | `--draft` | ドラフトPRとして作成 | false |
 | `--force` | 未コミット変更があっても続行 | false（非推奨） |
 | `--help` | ヘルプメッセージを表示 | - |
@@ -34,6 +35,32 @@
    - unpushedコミットがあれば自動push
 ```
 
+### 2.5. Issue番号取得フェーズ
+
+Issue番号の取得優先順位：
+
+```
+1. --issue オプションで明示指定
+   └─ 指定あり → その番号を使用
+
+2. vibe-kanban タスクタイトルから抽出
+   - mcp__vibe_kanban__list_tasks でプロジェクトのタスク一覧を取得
+   - inprogress ステータスのタスクタイトルから "#<number>" を抽出
+   - 例: "#30 feat: Add user authentication" → Issue #30
+
+3. ブランチ名から抽出
+   - git branch --show-current でブランチ名取得
+   - パターンマッチ:
+     - issue-<number>-* → Issue #<number>
+     - <number>-* → Issue #<number>
+     - feature/<number>-* → Issue #<number>
+   - 例: "issue-30-user-auth" → Issue #30
+
+4. ユーザーに確認（AskUserQuestion）
+   - 上記で取得できない場合
+   - 「関連するGitHub Issue番号を入力してください（なければスキップ）」
+```
+
 ### 3. 情報収集・構造化フェーズ【Token節約】
 ```bash
 1. レイヤー別ファイル集計
@@ -45,9 +72,9 @@
 2. コミットログ要約
    - git log --oneline $BASE_BRANCH..HEAD
 
-3. TASK.md情報抽出（存在する場合）
-   - 概要セクション → Summary候補
-   - 受け入れ基準セクション → Test plan候補
+3. GitHub Issue情報取得（Issue番号がある場合）
+   - gh issue view <number> --json title,body
+   - Issue本文から概要・受け入れ基準を抽出
 
 4. 統計情報
    - git diff --stat $BASE_BRANCH...HEAD
@@ -55,12 +82,22 @@
 
 ### 4. PR作成フェーズ
 ```bash
-1. gh pr create 実行
+1. PRタイトル生成
+   - Issue番号がある場合: "#<number> <type>: <description>"
+   - 例: "#30 feat: Add user authentication"
+
+2. PR本文生成
+   - Issue番号がある場合、末尾に "Closes #<number>" を追加
+   - マージ時にIssueが自動クローズされる
+
+3. gh pr create 実行
    - --title / --body 指定がなければインタラクティブ
    - --base でベースブランチ指定（デフォルト: main）
-2. PR URL取得
+
+4. PR URL取得
    - gh pr view --json url -q .url
-3. 成功確認
+
+5. 成功確認
    - 終了コード 0 を確認
 ```
 
@@ -93,7 +130,10 @@
 - feat: Add ListOnboardingsUseCase
 - feat: Add API endpoints
 
-### TASK.md情報
+### Issue #30 情報
+
+**タイトル:**
+feat: Add onboarding list/detail API
 
 **Summary候補:**
 オンボーディング案件の一覧取得・詳細取得APIを実装し、フロントエンドと統合する。
@@ -113,7 +153,7 @@ Claude Codeが生成するPR本文のテンプレート：
 
 ```markdown
 ## Summary
-{task.summaryまたはcommitsから1-3行で生成}
+{Issue本文の概要またはcommitsから1-3行で生成}
 
 ## 変更内容
 
@@ -130,17 +170,23 @@ Claude Codeが生成するPR本文のテンプレート：
 - {追加したテストの概要}
 
 ## Test plan
-{task.acceptanceをチェックリスト化、なければ標準項目}
+{Issue本文の受け入れ基準をチェックリスト化、なければ標準項目}
 
 - [ ] 単体テストがパス
 - [ ] 統合テストがパス
 - [ ] Lint/型チェックがパス
 - [ ] 動作確認完了
 
+Closes #<issue-number>
+
 ---
 
 🤖 Generated with [Claude Code](https://claude.ai/code)
 ```
+
+**PRタイトルフォーマット:**
+- Issue番号がある場合: `#<number> <type>: <description>`
+- 例: `#30 feat: Add user authentication`
 
 ---
 
@@ -206,9 +252,15 @@ git rev-list origin/<branch>..HEAD --count
 # 0なら差分なし
 ```
 
-### Q: TASK.mdが読み込まれない
-- `TASK.md` はworktreeルートに配置
-- ファイル名は大文字小文字を正確に
+### Q: Issue番号が自動取得されない
+- vibe-kanbanタスクがinprogressステータスか確認
+- ブランチ名に番号が含まれているか確認（例: `issue-30-xxx`）
+- `--issue <number>` オプションで明示指定可能
+
+### Q: GitHub Issueの情報が取得できない
+- `gh auth status` で認証状態を確認
+- Issue番号が正しいか確認
+- リポジトリへの読み取り権限があるか確認
 
 ---
 

@@ -45,9 +45,10 @@ Claude Codeでプロジェクト立ち上げから設計・タスク管理・並
 
 | スキル | 説明 |
 |--------|------|
-| [create-pr](./.claude/skills/create-pr/SKILL.md) | PR作成 |
+| [create-pr](./.claude/skills/create-pr/SKILL.md) | PR作成（Issue番号をタイトル/本文に自動追加） |
 | [code-review](./.claude/skills/code-review/SKILL.md) | コードレビュー（セルフレビュー用） |
-| [review-pr](./.claude/skills/review-pr/SKILL.md) | GitHub PRをレビューしてコメント投稿 |
+| [review-pr](./.claude/skills/review-pr/SKILL.md) | GitHub PRをレビューしてコメント投稿（Issue受け入れ基準チェック対応） |
+| [start-pr-review-task](./.claude/skills/start-pr-review-task/SKILL.md) | PRレビュータスクをvibe-kanbanに登録して開始 |
 
 ---
 
@@ -83,14 +84,15 @@ flowchart TD
 
 #### ドキュメント作成フロー
 
-Feature Brief → Design Doc → Task File の3層構造でドキュメントを管理する。
+Feature Brief → Design Doc の構造でドキュメントを管理する。
+タスクはGitHub Issueとして作成し、vibe-kanbanで管理する。
 
 ```
 /create-feature-brief → docs/<name>-brief.md（なぜ・何を）
       ↓
 /create-design-doc → docs/<name>-design.md（どうやって）
       ↓
-/create-task → tasks/<name>.md（実装指示）
+/create-issue → GitHub Issue（タスク定義・受け入れ基準）
 ```
 
 ```mermaid
@@ -98,7 +100,7 @@ flowchart TD
     subgraph Documents["ドキュメント作成"]
         A["/create-feature-brief で要件定義"]
         B["/create-design-doc で設計書作成"]
-        C["/create-task でタスクファイル作成"]
+        C["/create-issue でGitHub Issue作成"]
         A --> B --> C
     end
 ```
@@ -186,9 +188,9 @@ flowchart TD
 /create-design-doc user-auth
 # → docs/user-auth-design.md（どうやって）
 
-# 3. タスクファイル作成
-/create-task feature-user-auth
-# → tasks/feature-user-auth.md（実装指示）
+# 3. GitHub Issue作成
+/create-issue
+# → GitHub Issue #30（タスク定義・受け入れ基準）
 ```
 
 ### GitHub Issue + vibe-kanban連携
@@ -213,10 +215,29 @@ gh issue create --title "feat: Add user authentication" --body "..."
 ### PRレビュー
 
 ```bash
+# 基本的なレビュー
 /review-pr 123
 # または
 /review-pr https://github.com/owner/repo/pull/123
+
+# Issue番号を指定して受け入れ基準チェック付きレビュー
+/review-pr 123 --issue 30
+# → PRタイトルに #30 が含まれていれば自動取得される
+
 # → Approve / Request Changes / Comment を選択してGitHubに投稿
+```
+
+### PRレビュータスク登録（vibe-kanban連携）
+
+```bash
+# PR番号を指定してレビュータスクを登録
+/start-pr-review-task 123
+# → vibe-kanbanにタスク登録
+# → PRタイトルからIssue番号を自動抽出
+# → ワークスペースセッション開始
+
+# PR番号未指定の場合、Open PR一覧から選択
+/start-pr-review-task
 ```
 
 ---
