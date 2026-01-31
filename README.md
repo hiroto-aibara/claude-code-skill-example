@@ -39,7 +39,6 @@ Claude Codeでプロジェクト立ち上げから設計・タスク管理・並
 | スキル | 説明 |
 |--------|------|
 | [create-worktree](./.claude/skills/create-worktree/SKILL.md) | 単一のworktreeを作成 |
-| [cleanup-worktree](./.claude/skills/cleanup-worktree/SKILL.md) | worktree削除（PRマージ後に使用） |
 
 #### PR / レビュー
 
@@ -320,8 +319,3 @@ git commit -m "sync: update create-pr skill"
 
 ---
 
-## リファレンス
-
-このリポジトリは以下を元に作成されています：
-
-- [shikajiro/claude-code-skill-example](https://github.com/shikajiro/claude-code-skill-example/tree/main)
