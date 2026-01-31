@@ -34,12 +34,6 @@ Claude Codeでプロジェクト立ち上げから設計・タスク管理・並
 | [start-vk-task](./.claude/skills/start-vk-task/SKILL.md) | GitHub Issueをvibe-kanbanに登録してワークスペース開始 |
 | [create-vk-task](./.claude/skills/create-vk-task/SKILL.md) | vibe-kanban MCPでタスクを直接登録 |
 
-#### Worktree 操作
-
-| スキル | 説明 |
-|--------|------|
-| [create-worktree](./.claude/skills/create-worktree/SKILL.md) | 単一のworktreeを作成 |
-
 #### PR / レビュー
 
 | スキル | 説明 |
