@@ -1,7 +1,7 @@
 ---
 name: review-pr
 description: Review a GitHub PR and post comments. Analyzes code quality, bugs, security, and performance. User chooses final action (Approve/Request Changes/Comment).
-allowed-tools: Bash(gh:*), Bash(git:*), Bash(jq:*), Bash(pytest:*), Bash(mypy:*), Bash(ruff:*), Bash(black:*), Bash(npm:*), Read, Grep, Glob, AskUserQuestion, mcp__github__get_pull_request, mcp__github__get_pull_request_files, mcp__github__get_pull_request_diff, mcp__github__create_and_submit_pull_request_review
+allowed-tools: Bash(gh:*), Bash(git:*), Bash(jq:*), Bash(pytest:*), Bash(mypy:*), Bash(ruff:*), Bash(black:*), Bash(npm:*), Read, Grep, Glob, AskUserQuestion, mcp__github__get_pull_request, mcp__github__get_pull_request_files, mcp__github__get_pull_request_diff, mcp__github__create_and_submit_pull_request_review, mcp__github__get_issue
 ---
 
 # PR Reviewer
@@ -13,9 +13,10 @@ GitHub PRを段階的にレビューし、コメントを投稿します。
 このスキルは**段階的アプローチ**でPRをレビューします：
 
 ```
-Phase 0: タスクファイル確認【任意】
-   - タスクファイルの有無を確認
-   - あれば受け入れ基準チェック用に読み込み
+Phase 0: Issue番号確認【任意】
+   - PRタイトルからIssue番号を自動抽出
+   - または --issue オプションで指定
+   - あれば受け入れ基準チェック用にIssue本文を取得
         ↓
 Phase 1: 全体像把握
    - PR基本情報・変更ファイル一覧を取得
@@ -24,7 +25,7 @@ Phase 2: 優先度判定
    - セキュリティ > API > Domain > Infra > UI > Tests
         ↓
 Phase 2.5: 受け入れ基準チェック【任意】
-   - タスクファイル指定時のみ実行
+   - Issue番号指定時のみ実行
    - pytest, mypy, ruff等を実行してチェック
         ↓
 Phase 3: 詳細レビュー
@@ -46,10 +47,15 @@ Phase 5: ユーザー確認・投稿
 /review-pr https://github.com/owner/repo/pull/123
 ```
 
-### タスクファイル付き（受け入れ基準チェック）
+### Issue番号指定（受け入れ基準チェック）
 
 ```bash
-/review-pr 123 tasks/feature-user-auth.md
+# --issue オプションでIssue番号を指定
+/review-pr 123 --issue 30
+
+# PRタイトルに#<number>が含まれていれば自動取得
+/review-pr 123
+# → PRタイトルが "#30 feat: Add feature" の場合、Issue #30 を自動参照
 ```
 
 ### 別リポジトリ
@@ -60,11 +66,17 @@ Phase 5: ユーザー確認・投稿
 
 ## 各フェーズの概要
 
-### Phase 0: タスクファイル確認
+### Phase 0: Issue番号確認
 
-タスクファイルが引数で指定されていない場合、`AskUserQuestion` でユーザーに確認：
-- **あり** → パスを入力
-- **なし** → Phase 1 へ
+Issue番号の取得優先順位：
+
+1. **--issue オプション**で明示指定
+2. **PRタイトル**から `#<number>` パターンを抽出
+3. **ユーザーに確認** - `AskUserQuestion` で問い合わせ（任意）
+
+Issue番号がある場合：
+- `mcp__github__get_issue` でIssue本文を取得
+- 「## 受け入れ基準」セクションを抽出・保持
 
 ### Phase 1: 全体像把握
 
@@ -84,9 +96,9 @@ Phase 5: ユーザー確認・投稿
 | 🔵 通常 | フロントエンド |
 | ⚪ 最低 | テスト/設定ファイル |
 
-### Phase 2.5: 受け入れ基準チェック（タスクファイル指定時のみ）
+### Phase 2.5: 受け入れ基準チェック（Issue番号指定時のみ）
 
-タスクファイルの「## 受け入れ基準」をチェック：
+GitHub Issueの「## 受け入れ基準」をチェック：
 
 | 基準タイプ | 判定方法 |
 |-----------|---------|
@@ -116,9 +128,9 @@ Phase 5: ユーザー確認・投稿
 |------|------|
 | 変更ファイル数 | 15 files |
 | 追加/削除 | +500 / -100 |
-| タスクファイル | tasks/xxx.md / なし |
+| 関連Issue | #30 / なし |
 
-### 📋 受け入れ基準チェック（指定時のみ）
+### 📋 受け入れ基準チェック（Issue指定時のみ）
 | 基準 | 結果 |
 |------|------|
 | pytest | ✅ PASS |
@@ -143,13 +155,14 @@ Phase 5: ユーザー確認・投稿
 
 - `gh` CLI がインストール・認証済み
 - PRの読み取り権限があること
+- GitHub MCP サーバーが接続されていること
 
 ## 関連スキル
 
 - `/create-pr` - PR作成
 - `/cleanup-worktree` - worktree削除
 - `/start-pr-review-task` - PRレビュータスクの登録・開始（vibe-kanban連携）
-- `/create-task` - タスクファイル作成
+- `/create-issue` - GitHub Issue作成
 
 ## 詳細
 

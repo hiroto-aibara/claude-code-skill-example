@@ -1,7 +1,7 @@
 ---
 name: create-pr
 description: Creates a PR from the current branch without deleting the worktree. Use this when you want to keep the worktree for local modifications.
-allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(pwd:*), Read
+allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(pwd:*), Read, mcp__vibe_kanban__list_projects, mcp__vibe_kanban__list_tasks, AskUserQuestion
 ---
 
 # Create PR
@@ -18,18 +18,24 @@ allowed-tools: Bash(git:*), Bash(gh:*), Bash(cd:*), Bash(pwd:*), Read
    - 未コミット変更チェック
    - 未プッシュコミット → 自動push
         ↓
-2. 情報収集・構造化（bash）【Token節約】
+2. Issue番号の取得
+   - vibe-kanban タスクタイトルから抽出（#30 feat: ... 形式）
+   - またはブランチ名から抽出（issue-30-xxx, 30-xxx 等）
+   - 取得できない場合はユーザーに確認
+        ↓
+3. 情報収集・構造化（bash）【Token節約】
    - レイヤー別変更ファイル集計
    - コミットログ要約
-   - TASK.md抽出（概要・受け入れ基準）
+   - Issue本文から概要・受け入れ基準を参照（任意）
    → 構造化情報を出力
         ↓
-3. PR本文生成（Claude Code）
+4. PR本文生成（Claude Code）
    - 構造化情報のみを入力として受け取る
    - テンプレートに沿って本文生成
+   - 「Closes #<issue-number>」を追加
         ↓
-4. PR作成（bash）
-   - gh pr create 実行
+5. PR作成（bash）
+   - gh pr create 実行（タイトルにIssue番号を含む）
    - PR URL返却
 ```
 
@@ -48,6 +54,9 @@ cd .worktrees/<feature-name>
 ```bash
 # タイトルと本文を事前指定
 /create-pr --title "feat: Add new feature" --body "詳細な説明..."
+
+# Issue番号を明示指定
+/create-pr --issue 30
 
 # ドラフトPRとして作成
 /create-pr --draft
@@ -111,12 +120,19 @@ cd .worktrees/<feature-name>
 - [ ] ページリロード後もデータが保持される
 ```
 
-### TASK.mdとの連携
+### GitHub Issueとの連携
 
-worktree内に `TASK.md` がある場合、スクリプトが以下を自動抽出：
-- **概要** → Summary の素材
-- **要件** → 変更内容の構造
-- **受け入れ基準** → Test plan のベース
+関連するGitHub Issueがある場合：
+- **Issue本文の概要** → Summary の素材
+- **Issue本文の受け入れ基準** → Test plan のベース
+- **PRタイトル** に `#<issue-number>` を含める
+- **PR本文** に `Closes #<issue-number>` を追加（マージ時にIssue自動クローズ）
+
+#### Issue番号の取得優先順位
+
+1. **vibe-kanban タスクタイトル** から抽出（`#30 feat: ...` 形式）
+2. **ブランチ名** から抽出（`issue-30-xxx`、`30-feature-xxx` 等）
+3. **ユーザーに確認** - 上記で取得できない場合は `AskUserQuestion` で問い合わせ
 
 ---
 
@@ -134,6 +150,7 @@ $ /create-pr
 
 [INFO] Current branch: feature/user-auth
 [INFO] Base branch: main
+[INFO] Issue number: #30 (from vibe-kanban task title)
 [STEP] Analyzing changes...
 
 ### 変更ファイル分析
@@ -150,11 +167,13 @@ $ /create-pr
 **テスト:**
 - 6ファイル追加
 
-### TASK.md情報
+### Issue #30 情報
 - Summary候補: ユーザー認証機能を実装...
 - Test plan候補: 全テストがパス, ESLintエラーなし...
 
 [STEP] Creating pull request...
+[INFO] PR title: #30 feat: Add user authentication
+[INFO] PR body includes: Closes #30
 [INFO] PR created: https://github.com/user/repo/pull/123
 ```
 
@@ -163,6 +182,8 @@ $ /create-pr
 - `cleanup-worktree`: worktree削除
 - `review-pr`: PRレビュー
 - `create-worktree`: worktree作成
+- `create-issue`: GitHub Issue作成
+- `start-vk-task`: Issue登録・ワークスペース開始
 
 ## 詳細
 

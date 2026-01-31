@@ -7,28 +7,34 @@
 
 ## 段階的レビューの詳細手順
 
-### Phase 0: タスクファイル確認
+### Phase 0: Issue番号確認
 
-#### タスクファイルの確認フロー
+#### Issue番号の取得フロー
 
 ```
-引数でタスクファイルが指定されている？
-  ├─ Yes → Read でファイルを読み込む
-  │         └─ 「## 受け入れ基準」セクションを抽出・保持
+--issue オプションで指定されている？
+  ├─ Yes → その番号を使用
   │
-  └─ No → AskUserQuestion でユーザーに確認
-            ├─ 「あり」→ パスを入力してもらい Read で読み込む
-            └─ 「なし」→ Phase 1 へ（受け入れ基準チェックはスキップ）
+  └─ No → PRタイトルから "#<number>" を抽出
+            ├─ 見つかった → その番号を使用
+            │
+            └─ 見つからない → AskUserQuestion でユーザーに確認
+                              ├─ 「Issue番号を入力」→ その番号を使用
+                              └─ 「スキップ」→ Phase 1 へ（受け入れ基準チェックはスキップ）
 ```
+
+Issue番号がある場合：
+- `mcp__github__get_issue` でIssue本文を取得
+- 「## 受け入れ基準」セクションを抽出・保持
 
 #### AskUserQuestion の例
 
 ```
-対応するタスクファイルはありますか？
-受け入れ基準との整合性をチェックできます。
+関連するGitHub Issue番号はありますか？
+Issue本文の受け入れ基準との整合性をチェックできます。
 
-- あり（パスを入力）
-- なし（そのままレビュー）
+- Issue番号を入力（例: 30）
+- スキップ（そのままレビュー）
 ```
 
 ---
@@ -111,9 +117,18 @@ jq -r '.[0].text | fromjson | .[].filename' <result_file>
 
 ---
 
-### Phase 2.5: 受け入れ基準チェック（タスクファイル指定時のみ）
+### Phase 2.5: 受け入れ基準チェック（Issue番号指定時のみ）
 
-タスクファイルの「## 受け入れ基準」セクションを解析し、各基準をチェックします。
+GitHub Issue本文の「## 受け入れ基準」セクションを解析し、各基準をチェックします。
+
+**Issue本文の取得:**
+```bash
+# MCP経由
+mcp__github__get_issue(owner, repo, issue_number)
+
+# または gh CLI
+gh issue view <number> --json body -q .body
+```
 
 #### 受け入れ基準の種類と判定方法
 
@@ -445,4 +460,4 @@ git show pr-$PR_NUMBER:path/to/file.py
 - `/create-pr` - PR作成
 - `/cleanup-worktree` - worktree削除
 - `/start-pr-review-task` - PRレビュータスクの登録・開始（vibe-kanban連携）
-- `/create-task` - タスクファイル作成
+- `/create-issue` - GitHub Issue作成

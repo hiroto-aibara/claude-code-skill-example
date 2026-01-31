@@ -30,24 +30,24 @@ Claude Codeでプロジェクト立ち上げから設計・タスク管理・並
 
 | スキル | 説明 |
 |--------|------|
-| [create-task](./.claude/skills/create-task/SKILL.md) | タスクファイル（TASK.md）を生成 |
-| [create-vk-task](./.claude/skills/create-vk-task/SKILL.md) | vibe-kanban MCPでタスクを登録 |
+| [create-issue](./.claude/skills/create-issue/SKILL.md) | GitHub Issueを作成（タスク定義用） |
+| [start-vk-task](./.claude/skills/start-vk-task/SKILL.md) | GitHub Issueをvibe-kanbanに登録してワークスペース開始 |
+| [create-vk-task](./.claude/skills/create-vk-task/SKILL.md) | vibe-kanban MCPでタスクを直接登録 |
 
 #### Worktree 操作
 
 | スキル | 説明 |
 |--------|------|
 | [create-worktree](./.claude/skills/create-worktree/SKILL.md) | 単一のworktreeを作成 |
-| [create-multiple-worktrees](./.claude/skills/create-multiple-worktrees/SKILL.md) | TASK.mdから複数のworktreeを一括作成 |
-| [cleanup-worktree](./.claude/skills/cleanup-worktree/SKILL.md) | worktree削除（PRマージ後に使用） |
 
 #### PR / レビュー
 
 | スキル | 説明 |
 |--------|------|
-| [create-pr](./.claude/skills/create-pr/SKILL.md) | PR作成 |
+| [create-pr](./.claude/skills/create-pr/SKILL.md) | PR作成（Issue番号をタイトル/本文に自動追加） |
 | [code-review](./.claude/skills/code-review/SKILL.md) | コードレビュー（セルフレビュー用） |
-| [review-pr](./.claude/skills/review-pr/SKILL.md) | GitHub PRをレビューしてコメント投稿 |
+| [review-pr](./.claude/skills/review-pr/SKILL.md) | GitHub PRをレビューしてコメント投稿（Issue受け入れ基準チェック対応） |
+| [start-pr-review-task](./.claude/skills/start-pr-review-task/SKILL.md) | PRレビュータスクをvibe-kanbanに登録して開始 |
 
 ---
 
@@ -83,14 +83,15 @@ flowchart TD
 
 #### ドキュメント作成フロー
 
-Feature Brief → Design Doc → Task File の3層構造でドキュメントを管理する。
+Feature Brief → Design Doc の構造でドキュメントを管理する。
+タスクはGitHub Issueとして作成し、vibe-kanbanで管理する。
 
 ```
 /create-feature-brief → docs/<name>-brief.md（なぜ・何を）
       ↓
 /create-design-doc → docs/<name>-design.md（どうやって）
       ↓
-/create-task → tasks/<name>.md（実装指示）
+/create-issue → GitHub Issue（タスク定義・受け入れ基準）
 ```
 
 ```mermaid
@@ -98,99 +99,48 @@ flowchart TD
     subgraph Documents["ドキュメント作成"]
         A["/create-feature-brief で要件定義"]
         B["/create-design-doc で設計書作成"]
-        C["/create-task でタスクファイル作成"]
+        C["/create-issue でGitHub Issue作成"]
         A --> B --> C
     end
 ```
 
-#### A. ファイルベースワークフロー
+#### 実装フロー（GitHub Issue + vibe-kanban連携）
 
-worktreeを使用した並列開発フロー。
+GitHub IssueとVibe-kanbanを連携したタスク管理フロー。
 
 ```
-/create-task → TASK.md作成
+GitHub Issue作成 → /start-vk-task <issue-number>
       ↓
-/create-multiple-worktrees → worktree一括作成
-      ↓
-各worktreeで開発 → /code-review → /create-pr → /review-pr → /cleanup-worktree
-```
-
-```mermaid
-flowchart TD
-    subgraph Orchestrator["オーケストレーター"]
-        A["/plan で全体設計"]
-        B["/create-task でTASK.md作成"]
-        C["/create-multiple-worktrees でworktree一括作成"]
-        A --> B --> C
-    end
-
-    subgraph Implementer["実装者（各worktreeで並列作業）"]
-        D["cd .worktrees/&lt;feature&gt; && claude"]
-        E["開発・コミット"]
-        F["/code-review でセルフレビュー"]
-        G["/create-pr でPR作成"]
-        D --> E --> F --> G
-    end
-
-    subgraph Review["オーケストレーター"]
-        H["/review-pr でレビュー"]
-        I{"Approve?"}
-        J["マージ"]
-        H --> I
-        I -->|Yes| J
-    end
-
-    subgraph Fix["実装者"]
-        K["修正・コミット・プッシュ"]
-    end
-
-    subgraph Cleanup["オーケストレーター"]
-        L["/cleanup-worktree でworktree削除"]
-    end
-
-    C --> D
-    G --> H
-    I -->|No| K
-    K --> H
-    J --> L
-```
-
-#### B. vibe-kanban連携ワークフロー
-
-vibe-kanban MCPサーバーを使用したタスク管理フロー。
-
-```
-/create-vk-task → タスク登録（MCP経由）
-      ↓
-start_workspace_session → ワークスペース作成（自動でworktree + ブランチ作成）
+ワークスペース作成（自動でworktree + ブランチ作成）
       ↓
 開発 → /code-review → /create-pr → タスクステータス更新
 ```
 
 ```mermaid
 flowchart TD
-    subgraph TaskCreation["タスク作成"]
-        A["/create-vk-task でタスク登録"]
-        B["start_workspace_session でワークスペース作成"]
-        A --> B
+    subgraph IssueManagement["Issue管理"]
+        A["GitHub Issueを作成"]
+        B["/start-vk-task でvibe-kanbanに登録"]
+        C["ワークスペース自動作成"]
+        A --> B --> C
     end
 
     subgraph Implementation["実装"]
-        C["ワークスペースで開発"]
-        D["コミット"]
-        C --> D
+        D["ワークスペースで開発"]
+        E["コミット"]
+        D --> E
     end
 
     subgraph Completion["完了処理"]
-        E["/code-review でセルフレビュー"]
-        F["指摘事項を修正"]
-        G["/create-pr でPR作成"]
-        H["タスクステータスを inreview に更新"]
-        E --> F --> G --> H
+        F["/code-review でセルフレビュー"]
+        G["指摘事項を修正"]
+        H["/create-pr でPR作成（Closes #issue-number）"]
+        I["タスクステータスを inreview に更新"]
+        F --> G --> H --> I
     end
 
-    B --> C
-    D --> E
+    C --> D
+    E --> F
 ```
 
 ---
@@ -237,49 +187,56 @@ flowchart TD
 /create-design-doc user-auth
 # → docs/user-auth-design.md（どうやって）
 
-# 3. タスクファイル作成
-/create-task feature-user-auth
-# → tasks/feature-user-auth.md（実装指示）
+# 3. GitHub Issue作成
+/create-issue
+# → GitHub Issue #30（タスク定義・受け入れ基準）
 ```
 
-### ファイルベース開発
+### GitHub Issue + vibe-kanban連携
 
 ```bash
-# 1. Worktree一括作成
-/create-multiple-worktrees tasks/*.md
+# 1. GitHub Issueを作成（GitHub UI または gh CLI）
+gh issue create --title "feat: Add user authentication" --body "..."
+# → Issue #30 が作成される
 
-# 2. 開発・PR作成
-cd .worktrees/feature-user-auth && claude
-/code-review  # セルフレビュー
-/create-pr    # PR作成
-
-# 3. worktree削除（PRマージ後）
-/cleanup-worktree
-```
-
-### vibe-kanban連携
-
-```bash
-# 1. タスク登録
-/create-vk-task user-auth
-# → vibe-kanban MCPでタスク登録
-
-# 2. ワークスペース作成（MCP経由で自動）
+# 2. Issue番号を指定してvibe-kanbanに登録 + ワークスペース開始
+/start-vk-task 30
+# → vibe-kanbanにタスク登録（タイトル: #30 feat: Add user authentication）
 # → worktree + ブランチが自動作成される
 
 # 3. 完了処理
 /code-review
 /create-pr
+# → PRの説明に "Closes #30" を含める
 # → タスクステータスを inreview に更新
 ```
 
 ### PRレビュー
 
 ```bash
+# 基本的なレビュー
 /review-pr 123
 # または
 /review-pr https://github.com/owner/repo/pull/123
+
+# Issue番号を指定して受け入れ基準チェック付きレビュー
+/review-pr 123 --issue 30
+# → PRタイトルに #30 が含まれていれば自動取得される
+
 # → Approve / Request Changes / Comment を選択してGitHubに投稿
+```
+
+### PRレビュータスク登録（vibe-kanban連携）
+
+```bash
+# PR番号を指定してレビュータスクを登録
+/start-pr-review-task 123
+# → vibe-kanbanにタスク登録
+# → PRタイトルからIssue番号を自動抽出
+# → ワークスペースセッション開始
+
+# PR番号未指定の場合、Open PR一覧から選択
+/start-pr-review-task
 ```
 
 ---
@@ -362,8 +319,3 @@ git commit -m "sync: update create-pr skill"
 
 ---
 
-## リファレンス
-
-このリポジトリは以下を元に作成されています：
-
-- [shikajiro/claude-code-skill-example](https://github.com/shikajiro/claude-code-skill-example/tree/main)
