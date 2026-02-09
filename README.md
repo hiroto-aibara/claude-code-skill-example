@@ -1,6 +1,6 @@
 # Claude Code Skills
 
-Claude Codeでプロジェクト立ち上げから設計・タスク管理・並列開発・PR作成までを効率化するスキルセットです。
+Claude Codeでプロジェクト立ち上げから設計・並列実装・レビュー・PR作成までを効率化するスキルセットです。
 
 ## スキル一覧
 
@@ -13,6 +13,7 @@ Claude Codeでプロジェクト立ち上げから設計・タスク管理・並
 | [init-project](./.claude/skills/init-project/SKILL.md) | プロジェクト基盤（git, GitHub, mise, husky, dependabot, docs テンプレート） |
 | [init-go-backend](./.claude/skills/init-go-backend/SKILL.md) | Go バックエンド（Clean Architecture, golangci-lint, depguard） |
 | [init-react-frontend](./.claude/skills/init-react-frontend/SKILL.md) | React フロントエンド（Vite, TypeScript, ESLint, Prettier, dev proxy） |
+| [init-nextjs-frontend](./.claude/skills/init-nextjs-frontend/SKILL.md) | Next.js フロントエンド |
 | [init-serena](./.claude/skills/init-serena/SKILL.md) | Serena MCP（セマンティックコード操作） |
 
 ### 開発中
@@ -25,23 +26,41 @@ Claude Codeでプロジェクト立ち上げから設計・タスク管理・並
 |--------|------|
 | [create-feature-brief](./.claude/skills/create-feature-brief/SKILL.md) | Feature Brief（要件定義）を生成 |
 | [create-design-doc](./.claude/skills/create-design-doc/SKILL.md) | Design Doc（設計書）を生成 |
+| [create-issue](./.claude/skills/create-issue/SKILL.md) | GitHub Issueを作成（タスク定義・受け入れ基準） |
 
-#### タスク管理
+#### Docker + Agent Teams（並列実装）
 
 | スキル | 説明 |
 |--------|------|
-| [create-issue](./.claude/skills/create-issue/SKILL.md) | GitHub Issueを作成（タスク定義用） |
-| [start-vk-task](./.claude/skills/start-vk-task/SKILL.md) | GitHub Issueをvibe-kanbanに登録してワークスペース開始 |
-| [create-vk-task](./.claude/skills/create-vk-task/SKILL.md) | vibe-kanban MCPでタスクを直接登録 |
+| [setup-docker](./.claude/skills/setup-docker/SKILL.md) | Docker + Agent Teams 環境のセットアップ（Dockerfile, docker-compose, mise） |
+| [dispatch-worktrees](./.claude/skills/dispatch-worktrees/SKILL.md) | GitHub Issueをもとにworktree作成 + Agent Teamsチームメイトを並列起動 |
+| [finalize-worktree](./.claude/skills/finalize-worktree/SKILL.md) | mainマージ → コードレビュー委譲 → 修正 → PR作成 |
+| [delegate-code-review](./.claude/skills/delegate-code-review/SKILL.md) | コードレビューをチームメイトに委譲（内部スキル） |
+| [cleanup-branches](./.claude/skills/cleanup-branches/SKILL.md) | PRマージ後のブランチ・worktreeクリーンアップ |
 
 #### PR / レビュー
 
 | スキル | 説明 |
 |--------|------|
 | [create-pr](./.claude/skills/create-pr/SKILL.md) | PR作成（Issue番号をタイトル/本文に自動追加） |
-| [code-review](./.claude/skills/code-review/SKILL.md) | コードレビュー（セルフレビュー用） |
+| [code-review](./.claude/skills/code-review/SKILL.md) | コードレビュー（セルフレビュー / チームメイト委譲対応） |
 | [review-pr](./.claude/skills/review-pr/SKILL.md) | GitHub PRをレビューしてコメント投稿（Issue受け入れ基準チェック対応） |
-| [start-pr-review-task](./.claude/skills/start-pr-review-task/SKILL.md) | PRレビュータスクをvibe-kanbanに登録して開始 |
+
+#### 共通
+
+| スキル | 説明 |
+|--------|------|
+| [shared/REVIEW_CHECKLIST.md](./.claude/skills/shared/REVIEW_CHECKLIST.md) | 共通レビューチェックリスト（code-review / review-pr が参照） |
+| [generate-review-checklist](./.claude/skills/generate-review-checklist/SKILL.md) | プロジェクト固有のレビューチェックリストを生成・更新 |
+
+#### タスク管理（vibe-kanban連携）
+
+vibe-kanban MCP を使用する場合のスキル。
+
+| スキル | 説明 |
+|--------|------|
+| [[legacy]start-vk-task](./.claude/skills/%5Blegacy%5Dstart-vk-task/SKILL.md) | GitHub Issueをvibe-kanbanに登録してワークスペース開始 |
+| [[legacy]start-pr-review-task](./.claude/skills/%5Blegacy%5Dstart-pr-review-task/SKILL.md) | PRレビュータスクをvibe-kanbanに登録して開始 |
 
 ---
 
@@ -52,99 +71,89 @@ Claude Codeでプロジェクト立ち上げから設計・タスク管理・並
 新規プロジェクトを開始する際のフロー。技術スタックに応じて必要なスキルを実行する。
 
 ```
-/init-project              ← 基盤作成（git, GitHub, tooling）
-      ↓
-/init-go-backend           ← Go バックエンド追加（任意）
-      ↓
-/init-react-frontend       ← React フロントエンド追加（任意）
-      ↓
-/init-serena               ← Serena MCP追加（任意）
+/init-project              <- 基盤作成（git, GitHub, tooling）
+      |
+/init-go-backend           <- Go バックエンド追加（任意）
+      |
+/init-react-frontend       <- React フロントエンド追加（任意）
+      |
+/init-serena               <- Serena MCP追加（任意）
+```
+
+### ドキュメント作成フロー
+
+Feature Brief -> Design Doc -> GitHub Issue の構造でドキュメントを管理する。
+
+```
+/create-feature-brief -> docs/<name>-brief.md（なぜ・何を）
+      |
+/create-design-doc -> docs/<name>-design.md（どうやって）
+      |
+/create-issue -> GitHub Issue（タスク定義・受け入れ基準）
+```
+
+### Agent Teams 並列実装フロー
+
+Dockerコンテナ内でAgent Teamsを使い、複数のGitHub Issueを並列に実装するフロー。
+
+```
+/setup-docker                    <- 初回のみ: Docker環境 + mise構成
+      |
+/create-issue                    <- 実装対象のGitHub Issueを作成
+      |
+/dispatch-worktrees #101 #102    <- Issue毎にworktree作成 + チームメイト並列起動
+      |                               各チームメイトが独立して実装・テスト・コミット
+      v
+/finalize-worktree               <- ブランチ毎に: mainマージ -> レビュー委譲 -> PR作成
+      |
+（PRマージ後）
+      |
+/cleanup-branches                <- マージ済みブランチ・worktreeの削除
 ```
 
 ```mermaid
 flowchart TD
-    A["/init-project"]
-    B["/init-go-backend"]
-    C["/init-react-frontend"]
-    D["/init-serena"]
-
-    A --> B
-    A --> C
-    A --> D
-```
-
-### 開発フロー
-
-#### ドキュメント作成フロー
-
-Feature Brief → Design Doc の構造でドキュメントを管理する。
-タスクはGitHub Issueとして作成し、vibe-kanbanで管理する。
-
-```
-/create-feature-brief → docs/<name>-brief.md（なぜ・何を）
-      ↓
-/create-design-doc → docs/<name>-design.md（どうやって）
-      ↓
-/create-issue → GitHub Issue（タスク定義・受け入れ基準）
-```
-
-```mermaid
-flowchart TD
-    subgraph Documents["ドキュメント作成"]
-        A["/create-feature-brief で要件定義"]
-        B["/create-design-doc で設計書作成"]
-        C["/create-issue でGitHub Issue作成"]
-        A --> B --> C
-    end
-```
-
-#### 実装フロー（GitHub Issue + vibe-kanban連携）
-
-GitHub IssueとVibe-kanbanを連携したタスク管理フロー。
-
-```
-GitHub Issue作成 → /start-vk-task <issue-number>
-      ↓
-ワークスペース作成（自動でworktree + ブランチ作成）
-      ↓
-開発 → /code-review → /create-pr → タスクステータス更新
-```
-
-```mermaid
-flowchart TD
-    subgraph IssueManagement["Issue管理"]
-        A["GitHub Issueを作成"]
-        B["/start-vk-task でvibe-kanbanに登録"]
-        C["ワークスペース自動作成"]
-        A --> B --> C
+    subgraph Setup["初回セットアップ"]
+        A["/setup-docker"]
     end
 
-    subgraph Implementation["実装"]
-        D["ワークスペースで開発"]
-        E["コミット"]
-        D --> E
+    subgraph Issues["Issue作成"]
+        A2["/create-issue x N"]
     end
 
-    subgraph Completion["完了処理"]
-        F["/code-review でセルフレビュー"]
-        G["指摘事項を修正"]
-        H["/create-pr でPR作成（Closes #issue-number）"]
-        I["タスクステータスを inreview に更新"]
-        F --> G --> H --> I
+    subgraph Dispatch["並列実装"]
+        B["/dispatch-worktrees #101 #102 #103"]
+        C1["worker-101: Issue #101 実装"]
+        C2["worker-102: Issue #102 実装"]
+        C3["worker-103: Issue #103 実装"]
+        B --> C1 & C2 & C3
     end
 
-    C --> D
-    E --> F
+    subgraph Finalize["完了処理（ブランチ毎）"]
+        D["/finalize-worktree"]
+        E["main マージ + レビュー委譲"]
+        F["指摘事項を修正"]
+        G["/create-pr"]
+        D --> E --> F --> G
+    end
+
+    subgraph Cleanup["クリーンアップ"]
+        H["/cleanup-branches"]
+    end
+
+    A --> A2
+    A2 --> B
+    C1 & C2 & C3 --> D
+    G --> H
 ```
 
----
-
-## 役割と責務
+### 役割と責務
 
 | 役割 | 責務 |
 |------|------|
-| **オーケストレーター** | 設計・タスク分割・ワークスペース作成・レビュー・クリーンアップ |
-| **実装者** | ワークスペース内での開発・PR作成 |
+| **リーダー（メインエージェント）** | 設計・タスク分割・worktree作成・レビュー判断・PR作成・クリーンアップ |
+| **チームメイト（ワーカー）** | worktree内での実装・テスト・コミット・完了報告 |
+| **レビュアー（委譲先）** | コードレビュー実施・構造化レビュー結果の返却 |
 
 ---
 
@@ -155,19 +164,19 @@ flowchart TD
 ```bash
 # 1. プロジェクト基盤
 /init-project
-# → git init, GitHub repo, mise.toml, docs/, husky, dependabot
+# -> git init, GitHub repo, mise.toml, docs/, husky, dependabot
 
 # 2. Go バックエンド（必要な場合）
 /init-go-backend
-# → go.mod, Clean Architecture layers, golangci-lint
+# -> go.mod, Clean Architecture layers, golangci-lint
 
 # 3. React フロントエンド（必要な場合）
 /init-react-frontend
-# → Vite + React + TypeScript, ESLint, Prettier, dev proxy
+# -> Vite + React + TypeScript, ESLint, Prettier, dev proxy
 
 # 4. Serena MCP（必要な場合）
 /init-serena
-# → Serena MCP設定, .gitignore更新
+# -> Serena MCP設定, .gitignore更新
 ```
 
 ### ドキュメント作成
@@ -175,34 +184,38 @@ flowchart TD
 ```bash
 # 1. Feature Brief 作成
 /create-feature-brief user-auth
-# → docs/user-auth-brief.md（なぜ・何を）
+# -> docs/user-auth-brief.md（なぜ・何を）
 
 # 2. Design Doc 作成
 /create-design-doc user-auth
-# → docs/user-auth-design.md（どうやって）
+# -> docs/user-auth-design.md（どうやって）
 
 # 3. GitHub Issue作成
 /create-issue
-# → GitHub Issue #30（タスク定義・受け入れ基準）
+# -> GitHub Issue #30（タスク定義・受け入れ基準）
 ```
 
-### GitHub Issue + vibe-kanban連携
+### Docker + Agent Teams 並列実装
 
 ```bash
-# 1. GitHub Issueを作成（GitHub UI または gh CLI）
-gh issue create --title "feat: Add user authentication" --body "..."
-# → Issue #30 が作成される
+# 1. Docker環境セットアップ（初回のみ）
+/setup-docker
+# -> .claude-docker/, .mise.toml検証, worktrees/, Dockerイメージビルド
 
-# 2. Issue番号を指定してvibe-kanbanに登録 + ワークスペース開始
-/start-vk-task 30
-# → vibe-kanbanにタスク登録（タイトル: #30 feat: Add user authentication）
-# → worktree + ブランチが自動作成される
+# 2. コンテナを起動してClaude Codeに接続
+.claude-docker/scripts/start.sh
 
-# 3. 完了処理
-/code-review
-/create-pr
-# → PRの説明に "Closes #30" を含める
-# → タスクステータスを inreview に更新
+# 3. コンテナ内でIssueを並列実装
+/dispatch-worktrees #101 #102 #103
+# -> worktree作成 + mise依存セットアップ + チームメイト並列起動
+
+# 4. 各ブランチの完了処理
+/finalize-worktree feat/issue-101-user-auth
+# -> mainマージ -> コードレビュー委譲 -> 修正 -> PR作成
+
+# 5. PRマージ後のクリーンアップ
+/cleanup-branches
+# -> マージ済みブランチ・worktreeの安全な削除
 ```
 
 ### PRレビュー
@@ -210,27 +223,12 @@ gh issue create --title "feat: Add user authentication" --body "..."
 ```bash
 # 基本的なレビュー
 /review-pr 123
-# または
-/review-pr https://github.com/owner/repo/pull/123
 
 # Issue番号を指定して受け入れ基準チェック付きレビュー
 /review-pr 123 --issue 30
-# → PRタイトルに #30 が含まれていれば自動取得される
+# -> PRタイトルに #30 が含まれていれば自動取得
 
-# → Approve / Request Changes / Comment を選択してGitHubに投稿
-```
-
-### PRレビュータスク登録（vibe-kanban連携）
-
-```bash
-# PR番号を指定してレビュータスクを登録
-/start-pr-review-task 123
-# → vibe-kanbanにタスク登録
-# → PRタイトルからIssue番号を自動抽出
-# → ワークスペースセッション開始
-
-# PR番号未指定の場合、Open PR一覧から選択
-/start-pr-review-task
+# -> Approve / Request Changes / Comment を選択してGitHubに投稿
 ```
 
 ---
@@ -241,16 +239,16 @@ gh issue create --title "feat: Add user authentication" --body "..."
 
 ```
 .claude/
-├── skill-source/          ← submodule（このリポジトリ）
+├── skill-source/          <- submodule（このリポジトリ）
 │   └── .claude/skills/
-│       ├── init-project/
-│       ├── init-go-backend/
+│       ├── setup-docker/
+│       ├── dispatch-worktrees/
 │       ├── create-pr/
 │       └── ...
-└── skills/                ← 実際に使用するスキル（コミット対象）
-    ├── init-project/      ← skill-sourceからコピー
-    ├── create-pr/         ← skill-sourceからコピー
-    └── my-custom-skill/   ← プロジェクト固有のスキル
+└── skills/                <- 実際に使用するスキル（コミット対象）
+    ├── setup-docker/      <- skill-sourceからコピー
+    ├── create-pr/         <- skill-sourceからコピー
+    └── my-custom-skill/   <- プロジェクト固有のスキル
 ```
 
 ### 1. Submoduleとして追加
@@ -263,7 +261,8 @@ git submodule add https://github.com/boost-consulting/claude-code-skill-example-
 
 ```bash
 # 使いたいスキルを .claude/skills/ にコピー
-cp -r .claude/skill-source/.claude/skills/init-project .claude/skills/
+cp -r .claude/skill-source/.claude/skills/setup-docker .claude/skills/
+cp -r .claude/skill-source/.claude/skills/dispatch-worktrees .claude/skills/
 cp -r .claude/skill-source/.claude/skills/create-pr .claude/skills/
 
 git add .claude/skills/
@@ -310,6 +309,3 @@ cp -r .claude/skill-source/.claude/skills/create-pr .claude/skills/
 git add .claude/skills/ .claude/skill-source
 git commit -m "sync: update create-pr skill"
 ```
-
----
-
