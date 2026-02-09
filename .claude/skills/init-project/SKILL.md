@@ -14,32 +14,32 @@ allowed-tools: Bash, Write, Read, Edit
 
 ```
 1. 情報収集（対話）
-   - プロジェクト名
-   - GitHub ユーザー/Organization
-   - プロジェクト概要（1-2文）
+   - /create-product-concept を実行し docs/product-concept.md を生成
+   - product-concept.md からプロジェクト名・概要を引用
+   - GitHub ユーザー/Organization を確認
         ↓
 2. Git初期化
    - git init
    - .gitignore 作成
         ↓
-3. プロジェクト基盤ファイル作成
+2. プロジェクト基盤ファイル作成
    - mise.toml（スケルトン）
    - .editorconfig
    - CLAUDE.md（スケルトン）
         ↓
-4. ドキュメントテンプレート作成
+3. ドキュメントテンプレート作成
    - docs/architecture.md（テンプレート）
    - docs/api.md（テンプレート）
    - docs/conventions.md（テンプレート）
         ↓
-5. ツーリング基盤
+4. ツーリング基盤
    - package.json（husky + lint-staged）
    - .husky/pre-commit
    - .github/dependabot.yml
         ↓
-6. GitHub リポジトリ作成 + プッシュ
+5. GitHub リポジトリ作成 + プッシュ
         ↓
-7. Skill-source submodule 追加
+6. Skill-source submodule 追加
    - .claude/skill-source（submodule）
    - .claude/skills/ に必要なスキルをコピー
 ```
@@ -64,6 +64,7 @@ allowed-tools: Bash, Write, Read, Edit
 │   ├── skill-source/          (submodule)
 │   └── skills/                (コピー)
 ├── docs/
+│   ├── product-concept.md     (ステップ1で生成)
 │   ├── architecture.md        (テンプレート)
 │   ├── api.md                 (テンプレート)
 │   └── conventions.md         (テンプレート)
@@ -144,5 +145,6 @@ init-project 完了後、技術スタックに応じて以下を実行：
 
 ## 関連スキル
 
+- `create-product-concept`: プロダクトコンセプト作成（ステップ1で実行）
 - `init-go-backend`: Go バックエンドセットアップ
 - `init-react-frontend`: React フロントエンドセットアップ

@@ -10,6 +10,7 @@ Claude Codeでプロジェクト立ち上げから設計・並列実装・レビ
 
 | スキル | 説明 |
 |--------|------|
+| [create-product-concept](./.claude/skills/create-product-concept/SKILL.md) | プロダクトコンセプト（ビジョン・ターゲット・MVP・技術スタック） |
 | [init-project](./.claude/skills/init-project/SKILL.md) | プロジェクト基盤（git, GitHub, mise, husky, dependabot, docs テンプレート） |
 | [init-go-backend](./.claude/skills/init-go-backend/SKILL.md) | Go バックエンド（Clean Architecture, golangci-lint, depguard） |
 | [init-react-frontend](./.claude/skills/init-react-frontend/SKILL.md) | React フロントエンド（Vite, TypeScript, ESLint, Prettier, dev proxy） |
@@ -71,7 +72,7 @@ vibe-kanban MCP を使用する場合のスキル。
 新規プロジェクトを開始する際のフロー。技術スタックに応じて必要なスキルを実行する。
 
 ```
-/init-project              <- 基盤作成（git, GitHub, tooling）
+/init-project              <- 基盤作成（/create-product-concept → git, GitHub, tooling）
       |
 /init-go-backend           <- Go バックエンド追加（任意）
       |
@@ -162,9 +163,9 @@ flowchart TD
 ### プロジェクト立ち上げ
 
 ```bash
-# 1. プロジェクト基盤
+# 1. プロジェクト基盤（最初に /create-product-concept でコンセプト整理）
 /init-project
-# -> git init, GitHub repo, mise.toml, docs/, husky, dependabot
+# -> docs/product-concept.md, git init, GitHub repo, mise.toml, docs/, husky, dependabot
 
 # 2. Go バックエンド（必要な場合）
 /init-go-backend
