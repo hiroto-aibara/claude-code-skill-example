@@ -1,6 +1,6 @@
 ---
 name: create-issue
-description: Creates a GitHub Issue based on user's description. Use this to define task requirements before starting work with /start-vk-task.
+description: Creates a GitHub Issue based on user's description. Use this to define task requirements before starting work with /dispatch-worktrees.
 allowed-tools: mcp__github__create_issue, mcp__github__list_issues, Bash(git remote:*)
 ---
 
@@ -40,36 +40,28 @@ allowed-tools: mcp__github__create_issue, mcp__github__list_issues, Bash(git rem
 
 ### Phase 2: Issue内容生成
 
-以下の構成でIssue本文を生成：
+[TEMPLATE.md](TEMPLATE.md) のフォーマットに従ってIssue本文を生成する。主要セクション：
 
-```markdown
-## 概要
-タスクの概要説明
+1. **概要** — タスクの概要を1-2文で
+2. **フロー** — 処理フローを矢印で表現
+3. **実装ファイル一覧** — 変更対象をレイヤー/カテゴリごとに整理
+4. **実装順序** — 依存関係を考慮した順序
+5. **状態遷移ルール** — 該当する場合
+6. **設計判断** — 重要な設計上の判断事項と理由
+7. **後続機能との整合性** — 関連する既存/将来機能との整合
+8. **受け入れ基準** — Issue 完了の判定チェックリスト（**最重要セクション**）
+9. **テスト計画** — テストファイル・正常系/異常系・手動確認項目
+10. **完了時の手順** — 受け入れ基準チェック → `/code-review` → `/create-pr` → ステータス更新
 
-## 要件
-- [ ] 要件1
-- [ ] 要件2
-- [ ] 要件3
+#### 受け入れ基準の記述ルール
 
-## 技術仕様
-- 使用技術:
-- 関連ファイル:
-- API エンドポイント:
+受け入れ基準は Issue の品質を担保する最重要セクション。以下を厳守すること：
 
-## 受け入れ基準
-- [ ] 全テストがパス
-- [ ] ESLint/Prettier エラーなし
-- [ ] コードレビュー完了
-
-## 品質基準
-- テストカバレッジ: 80%以上
-- パフォーマンス: レスポンス200ms以内
-- セキュリティ: 入力バリデーション必須
-
-## 参考リソース
-- Design Doc:
-- 関連Issue:
-```
+- **チェックボックス形式** (`- [ ]`) で記載する
+- **具体的・検証可能**: yes/no で判定できる表現にする。曖昧な表現（「適切に」「正しく」のみ）は避け、何をもって正しいとするかを明記する
+- **検証方法を併記**: 自明でない場合は括弧で補足（例: 「PHPUnit テストが通ること」「`curl localhost:8000/health` で HTTP 200」）
+- **サブ機能ごとにグループ化**: 複数の機能を含む Issue は見出しで分ける
+- **数値・固有名を含める**: 「主要テーブル」ではなく「全20テーブル」、「認証が通る」ではなく「管理者・一般ユーザーの2種で認証が通る」のように定量化する
 
 ### Phase 3: Issue作成
 
@@ -93,9 +85,9 @@ allowed-tools: mcp__github__create_issue, mcp__github__list_issues, Bash(git rem
 | URL | https://github.com/owner/repo/issues/31 |
 
 ### 次のステップ
-ワークスペースを開始するには:
+worktreeを作成して実装を開始するには:
 \`\`\`bash
-/start-vk-task 31
+/dispatch-worktrees #31
 \`\`\`
 ```
 
@@ -126,5 +118,6 @@ Conventional Commits形式を推奨：
 
 ## 関連スキル
 
-- `/start-vk-task` - Issue番号を指定してvibe-kanbanに登録・ワークスペース開始
+- `/code-review` - セルフレビュー実行（完了時の手順で使用）
+- `/create-pr` - PR作成（完了時の手順で使用）
 - `/review-pr` - PRレビュー実行
