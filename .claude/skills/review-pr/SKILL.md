@@ -110,7 +110,15 @@ GitHub Issueの「## 受け入れ基準」をチェック：
 
 ### Phase 3: 詳細レビュー
 
-優先度順に個別diffを取得し、[共有チェックリスト](../shared/REVIEW_CHECKLIST.md)の観点でチェック。
+優先度順に個別diffを取得し、共有チェックリストの観点でチェック。
+
+PR の変更対象に応じて **共通 + 該当スタック** を参照:
+
+```
+.claude/skills/shared/REVIEW_CHECKLIST_COMMON.md     # 常に参照
+.claude/skills/shared/REVIEW_CHECKLIST_BACKEND.md    # バックエンド変更時
+.claude/skills/shared/REVIEW_CHECKLIST_FRONTEND.md   # フロントエンド変更時
+```
 
 **早期終了**: Critical問題が3つ以上 → Phase 4 へ
 

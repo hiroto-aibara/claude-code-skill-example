@@ -156,4 +156,6 @@ Skill: create-pr
 ## 参考
 
 - [docs/docker-agent-teams-guide.md](../../../docs/docker-agent-teams-guide.md) - Docker + Agent Teams ガイド
-- [.claude/skills/shared/REVIEW_CHECKLIST.md](../shared/REVIEW_CHECKLIST.md) - 共通レビューチェックリスト
+- [.claude/skills/shared/REVIEW_CHECKLIST_COMMON.md](../shared/REVIEW_CHECKLIST_COMMON.md) - 共通レビューチェックリスト
+- [.claude/skills/shared/REVIEW_CHECKLIST_BACKEND.md](../shared/REVIEW_CHECKLIST_BACKEND.md) - バックエンドレビューチェックリスト
+- [.claude/skills/shared/REVIEW_CHECKLIST_FRONTEND.md](../shared/REVIEW_CHECKLIST_FRONTEND.md) - フロントエンドレビューチェックリスト
