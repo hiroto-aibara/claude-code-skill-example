@@ -257,7 +257,13 @@ gh pr diff $PR_NUMBER -- path/to/file1.py path/to/file2.py
 
 ## レビュー観点チェックリスト
 
-[共有チェックリスト（shared/REVIEW_CHECKLIST.md）](../shared/REVIEW_CHECKLIST.md) を参照。
+3ファイル構成のチェックリストを参照。PR の変更対象に応じて **共通 + 該当スタック** を使用:
+
+| 変更対象 | 参照ファイル |
+|---------|-------------|
+| バックエンドのみ | [COMMON](../shared/REVIEW_CHECKLIST_COMMON.md) + [BACKEND](../shared/REVIEW_CHECKLIST_BACKEND.md) |
+| フロントエンドのみ | [COMMON](../shared/REVIEW_CHECKLIST_COMMON.md) + [FRONTEND](../shared/REVIEW_CHECKLIST_FRONTEND.md) |
+| 両方 | [COMMON](../shared/REVIEW_CHECKLIST_COMMON.md) + [BACKEND](../shared/REVIEW_CHECKLIST_BACKEND.md) + [FRONTEND](../shared/REVIEW_CHECKLIST_FRONTEND.md) |
 
 `/generate-review-checklist` スキルでプロジェクト固有のチェックリストを生成・更新可能。
 

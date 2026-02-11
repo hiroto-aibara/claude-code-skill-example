@@ -51,7 +51,9 @@ Claude Codeでプロジェクト立ち上げから設計・並列実装・レビ
 
 | スキル | 説明 |
 |--------|------|
-| [shared/REVIEW_CHECKLIST.md](./.claude/skills/shared/REVIEW_CHECKLIST.md) | 共通レビューチェックリスト（code-review / review-pr が参照） |
+| [shared/REVIEW_CHECKLIST_COMMON.md](./.claude/skills/shared/REVIEW_CHECKLIST_COMMON.md) | 共通レビューチェックリスト（セキュリティ、パフォーマンス、Git、ドキュメント） |
+| [shared/REVIEW_CHECKLIST_BACKEND.md](./.claude/skills/shared/REVIEW_CHECKLIST_BACKEND.md) | バックエンドレビューチェックリスト（アーキテクチャ、エラー、テスト、ログ、DB） |
+| [shared/REVIEW_CHECKLIST_FRONTEND.md](./.claude/skills/shared/REVIEW_CHECKLIST_FRONTEND.md) | フロントエンドレビューチェックリスト（ルーティング、状態管理、i18n、UX） |
 | [generate-review-checklist](./.claude/skills/generate-review-checklist/SKILL.md) | プロジェクト固有のレビューチェックリストを生成・更新 |
 
 #### タスク管理（vibe-kanban連携）

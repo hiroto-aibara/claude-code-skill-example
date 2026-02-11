@@ -99,7 +99,7 @@ TaskCreate:
     ## レビュー手順
     1. 作業ディレクトリに移動
     2. git diff origin/main...HEAD で差分を取得
-    3. .claude/skills/shared/REVIEW_CHECKLIST.md を読み込み
+    3. .claude/skills/shared/REVIEW_CHECKLIST_COMMON.md を読み込み（+ 変更対象に応じて BACKEND/FRONTEND）
     4. チェックリストに基づいてコードレビュー実施
     5. Issue の受け入れ基準を満たしているか確認
        - テスト実行（pytest, npm test 等）が基準に含まれる場合は実行する
@@ -157,7 +157,8 @@ Task:
     タスクの description に記載されたレビュー手順に従って作業してください。
 
     重要:
-    - .claude/skills/shared/REVIEW_CHECKLIST.md を必ず読み込み、
+    - .claude/skills/shared/REVIEW_CHECKLIST_COMMON.md を必ず読み込み、
+      変更対象に応じて REVIEW_CHECKLIST_BACKEND.md / REVIEW_CHECKLIST_FRONTEND.md も読み込み、
       チェックリストの各項目に沿ってレビューすること
     - タスクに Issue 受け入れ基準が記載されている場合は、
       その基準を満たしているかも必ず確認すること
