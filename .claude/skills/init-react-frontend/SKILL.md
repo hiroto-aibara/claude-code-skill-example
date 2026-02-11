@@ -24,30 +24,35 @@ React フロントエンドのセットアップを行います。
         ↓
 3. 追加パッケージインストール
    - ユーザー指定パッケージ
-   - prettier, eslint-config-prettier（共通）
+   - typescript-eslint, eslint-config-prettier, prettier（共通）
         ↓
-4. ESLint 設定
-   - eslint-config-prettier 統合
+4. TypeScript 設定
+   - tsconfig.json に strict + noUnusedLocals + noUnusedParameters
+        ↓
+5. ESLint 設定
+   - typescript-eslint の recommendedTypeChecked を extends
+   - 型安全ルール有効化（any禁止, await忘れ検出, Promise誤用検出）
    - React Hooks ルール有効化
+   - eslint-config-prettier で整形ルール無効化
         ↓
-5. Prettier 設定
+6. Prettier 設定
    - .prettierrc 作成
         ↓
-6. Vite 設定更新
+7. Vite 設定更新
    - API proxy 設定（/api → バックエンド）
    - WebSocket proxy 設定（/ws → バックエンド）
         ↓
-7. mise.toml 更新
+8. mise.toml 更新
    - Node ツール追加
    - フロントエンドタスク追加（dev:front, fmt, lint）
         ↓
-8. Pre-commit hook 更新
+9. Pre-commit hook 更新
    - lint-staged に TS/TSX 設定追加（prettier + eslint）
         ↓
-9. dependabot 更新
-   - npm エコシステム追加
+10. dependabot 更新
+    - npm エコシステム追加
         ↓
-10. CLAUDE.md 更新
+11. CLAUDE.md 更新
     - フロントエンドコマンド追記
 ```
 
@@ -102,11 +107,72 @@ web/
 }
 ```
 
-### ESLint
+### ESLint (eslint.config.mjs)
 
-- TypeScript strict
-- React Hooks ルール
-- eslint-config-prettier で整形ルールを無効化
+`typescript-eslint` の型チェック統合 + 型安全ルールを有効化する。
+
+```javascript
+import tseslint from 'typescript-eslint'
+import reactHooks from 'eslint-plugin-react-hooks'
+import prettier from 'eslint-config-prettier'
+
+export default tseslint.config(
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      ...tseslint.configs.recommendedTypeChecked,
+    ],
+    plugins: {
+      'react-hooks': reactHooks,
+    },
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+        ecmaFeatures: { jsx: true },
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/await-thenable': 'error',
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+      }],
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+    },
+  },
+  prettier,
+)
+```
+
+| ルール | 効果 |
+|--------|------|
+| `no-explicit-any` | `any` 型の明示的な使用を禁止 |
+| `no-floating-promises` | `await` 忘れを検出 |
+| `no-misused-promises` | Promise を誤った場所に渡すのを検出 |
+| `await-thenable` | Promise でないものを `await` するのを検出 |
+| `no-unused-vars` | 未使用変数を検出（`_` 始まりは許可） |
+| `react-hooks/*` | Hooks ルール違反を検出 |
+
+`recommendedTypeChecked` を extends しているため、上記に加えて `no-unsafe-return`, `no-unsafe-assignment` 等の型安全ルールも自動で有効になる。
+
+**必要パッケージ**: `typescript-eslint`, `eslint`, `eslint-plugin-react-hooks`, `eslint-config-prettier`, `prettier`
+
+### TypeScript (tsconfig.json)
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  }
+}
+```
 
 ### Vite Dev Proxy
 
@@ -118,12 +184,6 @@ server: {
   }
 }
 ```
-
-### TypeScript
-
-- `strict: true`
-- `noUnusedLocals: true`
-- `noUnusedParameters: true`
 
 ## 前提条件
 
