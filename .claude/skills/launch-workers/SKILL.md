@@ -19,7 +19,8 @@ Open Issue を選定し、既存 worktree 上に tmux で並列ワーカー Clau
 ## 前提条件
 
 - **worktree は既に存在すること**。ない場合はユーザーに通知して終了する。
-- worktree の作成（`scripts/worktree-create.sh`）は Skill の範囲外。
+- worktree の作成は Skill の範囲外。
+- `worktree-sync.sh` はこの Skill フォルダに同梱。初回セットアップ時に `scripts/` へコピーすること。
 
 ## 実行フロー
 
@@ -314,9 +315,9 @@ tmux attach -t workers
 - コミット（`git commit`）、push（`git push`）、Issue クローズ（`gh issue close`）
 - ワーカーの完了待ち（起動して報告で終了）
 
-## 利用する既存リソース
+## 利用するリソース
 
-| ファイル | 用途 |
-|---------|------|
-| `scripts/worktree-sync.sh` | 既存 worktree の同期 |
-| `.claude/skills/start-implementation/SKILL.md` | 各ワーカーが実行するスキル |
+| ファイル | 用途 | 配置方法 |
+|---------|------|---------|
+| `scripts/worktree-sync.sh` | 既存 worktree の同期 | この Skill フォルダの `worktree-sync.sh` を `scripts/` にコピー |
+| `.claude/skills/start-implementation/SKILL.md` | 各ワーカーが実行するスキル | — |
