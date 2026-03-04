@@ -15,8 +15,7 @@ Go バックエンドのセットアップを行います。
 ```
 1. 情報収集（対話）
    - Go モジュールパス（例: github.com/user/project）
-   - 追加パッケージ（デフォルト: chi, yaml.v3, fsnotify, websocket）
-   - レイヤー構成（デフォルト: clean architecture）
+   - 追加パッケージ（デフォルト: chi）
         ↓
 2. Go モジュール初期化
    - go mod init
@@ -59,18 +58,11 @@ Go バックエンドのセットアップを行います。
 ### 新規作成
 
 ```
-├── cmd/<app-name>/
-│   └── main.go              (placeholder)
 ├── internal/
-│   ├── domain/
-│   │   ├── board.go         (空パッケージ宣言)
-│   │   ├── card.go
-│   │   └── repository.go
+│   ├── domain/              (空パッケージ宣言)
 │   ├── usecase/
 │   ├── handler/
 │   └── infra/
-│       ├── yaml/
-│       └── watcher/
 ├── go.mod
 ├── go.sum
 └── .golangci.yml
@@ -103,28 +95,16 @@ handler → usecase → domain ← infra
 - `init-project` が実行済み
 - `mise` がインストール済み（Go は mise 経由でインストール）
 
-## カスタマイズ
-
-### レイヤー構成の変更
-
-デフォルトは Clean Architecture（domain, usecase, handler, infra）。
-別の構成が必要な場合は対話時に指定可能：
-
-- **Flat**: `internal/` 直下にすべて配置
-- **Hexagonal**: ports/adapters 構成
-- **Custom**: ユーザー指定
-
-### 依存パッケージ
+## 依存パッケージ
 
 デフォルトパッケージ：
 - `github.com/go-chi/chi/v5` — HTTP ルーター
-- `gopkg.in/yaml.v3` — YAML
-- `github.com/fsnotify/fsnotify` — ファイル監視
-- `github.com/gorilla/websocket` — WebSocket
 
-対話時に追加・削除可能。
+対話時に追加可能。
 
 ## 関連スキル
 
 - `init-project`: プロジェクト基盤（先に実行）
+- `init-go-api`: Web API インフラコード生成（本スキルの後に実行）
 - `init-react-frontend`: フロントエンドセットアップ
+- `init-react-native`: モバイルセットアップ
