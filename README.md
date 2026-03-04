@@ -13,8 +13,10 @@ Claude Codeでプロジェクト立ち上げから設計・並列実装・レビ
 | [create-product-concept](./.claude/skills/create-product-concept/SKILL.md) | プロダクトコンセプト（ビジョン・ターゲット・MVP・技術スタック） |
 | [init-project](./.claude/skills/init-project/SKILL.md) | プロジェクト基盤（git, GitHub, mise, husky, dependabot, docs テンプレート） |
 | [init-go-backend](./.claude/skills/init-go-backend/SKILL.md) | Go バックエンド（Clean Architecture, golangci-lint, depguard） |
+| [init-go-api](./.claude/skills/init-go-api/SKILL.md) | Web API インフラコード生成（middleware, response helpers, domain errors, main.go） |
 | [init-react-frontend](./.claude/skills/init-react-frontend/SKILL.md) | React フロントエンド（Vite, TypeScript, ESLint, Prettier, dev proxy） |
 | [init-nextjs-frontend](./.claude/skills/init-nextjs-frontend/SKILL.md) | Next.js フロントエンド |
+| [init-react-native](./.claude/skills/init-react-native/SKILL.md) | React Native（Expo, TypeScript, Expo Router, ESLint, Prettier） |
 | [init-serena](./.claude/skills/init-serena/SKILL.md) | Serena MCP（セマンティックコード操作） |
 
 ### 開発中
@@ -29,15 +31,20 @@ Claude Codeでプロジェクト立ち上げから設計・並列実装・レビ
 | [create-design-doc](./.claude/skills/create-design-doc/SKILL.md) | Design Doc（設計書）を生成 |
 | [create-issue](./.claude/skills/create-issue/SKILL.md) | GitHub Issueを作成（タスク定義・受け入れ基準） |
 
-#### Docker + Agent Teams（並列実装）
+#### Docker + 並列実装
 
 | スキル | 説明 |
 |--------|------|
-| [setup-docker](./.claude/skills/setup-docker/SKILL.md) | Docker + Agent Teams 環境のセットアップ（Dockerfile, docker-compose, mise） |
-| [dispatch-worktrees](./.claude/skills/dispatch-worktrees/SKILL.md) | GitHub Issueをもとにworktree作成 + Agent Teamsチームメイトを並列起動 |
+| [setup-docker](./.claude/skills/setup-docker/SKILL.md) | Docker 開発環境のセットアップ（Dockerfile, docker-compose, ネットワーク, mise） |
+| [launch-workers](./.claude/skills/launch-workers/SKILL.md) | Open Issueから最大4件を選定し、常駐worktree上でtmux並列ワーカーを起動 |
+| [start-implementation](./.claude/skills/start-implementation/SKILL.md) | Issue番号を指定してPlan策定・実装・テスト・レビュー・コミットを自律実行（各ワーカーが実行） |
+
+#### ブランチ管理
+
+| スキル | 説明 |
+|--------|------|
 | [finalize-worktree](./.claude/skills/finalize-worktree/SKILL.md) | mainマージ → コードレビュー委譲 → 修正 → PR作成 |
 | [delegate-code-review](./.claude/skills/delegate-code-review/SKILL.md) | コードレビューをチームメイトに委譲（内部スキル） |
-| [cleanup-branches](./.claude/skills/cleanup-branches/SKILL.md) | PRマージ後のブランチ・worktreeクリーンアップ |
 
 #### PR / レビュー
 
@@ -78,7 +85,11 @@ vibe-kanban MCP を使用する場合のスキル。
       |
 /init-go-backend           <- Go バックエンド追加（任意）
       |
+/init-go-api               <- Web API インフラコード追加（init-go-backend 後）
+      |
 /init-react-frontend       <- React フロントエンド追加（任意）
+      |
+/init-react-native         <- React Native (Expo) 追加（任意）
       |
 /init-serena               <- Serena MCP追加（任意）
 ```
@@ -95,23 +106,21 @@ Feature Brief -> Design Doc -> GitHub Issue の構造でドキュメントを管
 /create-issue -> GitHub Issue（タスク定義・受け入れ基準）
 ```
 
-### Agent Teams 並列実装フロー
+### Docker 並列実装フロー
 
-Dockerコンテナ内でAgent Teamsを使い、複数のGitHub Issueを並列に実装するフロー。
+Dockerコンテナ内で常駐worktreeを使い、複数のGitHub Issueを並列に実装するフロー。
+worktreeは事前に作成済みの常駐プールとして運用し、タスク完了後も削除せず再利用する。
 
 ```
-/setup-docker                    <- 初回のみ: Docker環境 + mise構成
+/setup-docker                    <- 初回のみ: Docker環境 + ネットワーク + mise構成
+      |
+docker compose up -d             <- dev stack 起動（DB等。ネットワーク疎通に必要）
       |
 /create-issue                    <- 実装対象のGitHub Issueを作成
       |
-/dispatch-worktrees #101 #102    <- Issue毎にworktree作成 + チームメイト並列起動
-      |                               各チームメイトが独立して実装・テスト・コミット
-      v
-/finalize-worktree               <- ブランチ毎に: mainマージ -> レビュー委譲 -> PR作成
-      |
-（PRマージ後）
-      |
-/cleanup-branches                <- マージ済みブランチ・worktreeの削除
+/launch-workers #101 #102        <- Issue選定 → worktree同期 → tmux並列ワーカー起動
+                                      各ワーカーが /start-implementation を実行
+                                      実装・テスト・レビュー・コミットまで自律完結
 ```
 
 ```mermaid
@@ -124,39 +133,23 @@ flowchart TD
         A2["/create-issue x N"]
     end
 
-    subgraph Dispatch["並列実装"]
-        B["/dispatch-worktrees #101 #102 #103"]
-        C1["worker-101: Issue #101 実装"]
-        C2["worker-102: Issue #102 実装"]
-        C3["worker-103: Issue #103 実装"]
-        B --> C1 & C2 & C3
-    end
-
-    subgraph Finalize["完了処理（ブランチ毎）"]
-        D["/finalize-worktree"]
-        E["main マージ + レビュー委譲"]
-        F["指摘事項を修正"]
-        G["/create-pr"]
-        D --> E --> F --> G
-    end
-
-    subgraph Cleanup["クリーンアップ"]
-        H["/cleanup-branches"]
+    subgraph Workers["並列実装（常駐worktree）"]
+        B["/launch-workers #101 #102"]
+        C1["wt1: /start-implementation #101"]
+        C2["wt2: /start-implementation #102"]
+        B --> C1 & C2
     end
 
     A --> A2
     A2 --> B
-    C1 & C2 & C3 --> D
-    G --> H
 ```
 
 ### 役割と責務
 
 | 役割 | 責務 |
 |------|------|
-| **リーダー（メインエージェント）** | 設計・タスク分割・worktree作成・レビュー判断・PR作成・クリーンアップ |
-| **チームメイト（ワーカー）** | worktree内での実装・テスト・コミット・完了報告 |
-| **レビュアー（委譲先）** | コードレビュー実施・構造化レビュー結果の返却 |
+| **リーダー（メインエージェント）** | 設計・タスク分割・Issue作成・ワーカー起動 |
+| **ワーカー（各worktree）** | `/start-implementation` による実装・テスト・レビュー・コミットを自律実行 |
 
 ---
 
@@ -173,11 +166,19 @@ flowchart TD
 /init-go-backend
 # -> go.mod, Clean Architecture layers, golangci-lint
 
-# 3. React フロントエンド（必要な場合）
+# 3. Web API インフラコード（init-go-backend 後）
+/init-go-api
+# -> middleware, response helpers, domain errors, main.go with graceful shutdown
+
+# 4. React フロントエンド（必要な場合）
 /init-react-frontend
 # -> Vite + React + TypeScript, ESLint, Prettier, dev proxy
 
-# 4. Serena MCP（必要な場合）
+# 5. React Native（必要な場合）
+/init-react-native
+# -> Expo + TypeScript, Expo Router, ESLint, Prettier
+
+# 6. Serena MCP（必要な場合）
 /init-serena
 # -> Serena MCP設定, .gitignore更新
 ```
@@ -198,27 +199,25 @@ flowchart TD
 # -> GitHub Issue #30（タスク定義・受け入れ基準）
 ```
 
-### Docker + Agent Teams 並列実装
+### Docker 並列実装
 
 ```bash
 # 1. Docker環境セットアップ（初回のみ）
 /setup-docker
 # -> .claude-docker/, .mise.toml検証, worktrees/, Dockerイメージビルド
 
-# 2. コンテナを起動してClaude Codeに接続
+# 2. dev stack を起動（DB等が必要な場合）
+docker compose up -d
+# -> {project-name}_default ネットワーク作成。コンテナ内からサービス名でアクセス可能
+
+# 3. コンテナを起動してClaude Codeに接続
 .claude-docker/scripts/start.sh
+# -> GH_TOKEN自動管理, ネットワーク疎通チェック, mise install
 
-# 3. コンテナ内でIssueを並列実装
-/dispatch-worktrees #101 #102 #103
-# -> worktree作成 + mise依存セットアップ + チームメイト並列起動
-
-# 4. 各ブランチの完了処理
-/finalize-worktree feat/issue-101-user-auth
-# -> mainマージ -> コードレビュー委譲 -> 修正 -> PR作成
-
-# 5. PRマージ後のクリーンアップ
-/cleanup-branches
-# -> マージ済みブランチ・worktreeの安全な削除
+# 4. コンテナ内でIssueを並列実装（常駐worktree上）
+/launch-workers #101 #102
+# -> Issue選定 → worktree同期 → tmux並列ワーカー起動
+# -> 各ワーカーが /start-implementation を自動実行（実装・テスト・レビュー・コミットまで自律完結）
 ```
 
 ### PRレビュー
@@ -245,12 +244,12 @@ flowchart TD
 ├── skill-source/          <- submodule（このリポジトリ）
 │   └── .claude/skills/
 │       ├── setup-docker/
-│       ├── dispatch-worktrees/
+│       ├── launch-workers/
 │       ├── create-pr/
 │       └── ...
 └── skills/                <- 実際に使用するスキル（コミット対象）
     ├── setup-docker/      <- skill-sourceからコピー
-    ├── create-pr/         <- skill-sourceからコピー
+    ├── launch-workers/    <- skill-sourceからコピー
     └── my-custom-skill/   <- プロジェクト固有のスキル
 ```
 
@@ -265,7 +264,7 @@ git submodule add https://github.com/boost-consulting/claude-code-skill-example-
 ```bash
 # 使いたいスキルを .claude/skills/ にコピー
 cp -r .claude/skill-source/.claude/skills/setup-docker .claude/skills/
-cp -r .claude/skill-source/.claude/skills/dispatch-worktrees .claude/skills/
+cp -r .claude/skill-source/.claude/skills/launch-workers .claude/skills/
 cp -r .claude/skill-source/.claude/skills/create-pr .claude/skills/
 
 git add .claude/skills/
